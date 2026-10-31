@@ -1,0 +1,1521 @@
+@import "tailwindcss";
+@import "@fontsource/montserrat/400.css";
+@import "@fontsource/montserrat/500.css";
+@import "@fontsource/montserrat/600.css";
+@import "@fontsource/montserrat/700.css";
+@import "@fontsource/montserrat/800.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Maia: soft, rounded, generous spacing, soft shadows. Primary: logo magenta (#E5097F). */
+  --radius: 1.25rem;
+
+  --background: oklch(0.955 0 0);
+  --foreground: oklch(0.2 0 0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0 0);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0 0);
+
+  --primary: oklch(60.06% 0.2416 358.28);
+  --primary-foreground: oklch(0.99 0.01 328);
+
+  --secondary: oklch(0.92 0 0);
+  --secondary-foreground: oklch(0.3 0 0);
+
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.46 0 0);
+
+  --accent: oklch(0.9 0 0);
+  --accent-foreground: oklch(0.25 0 0);
+
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.99 0.01 25);
+
+  --success: oklch(0.6 0.15 150);
+  --success-foreground: oklch(0.99 0.01 150);
+
+  --warning: oklch(0.84 0.16 80);
+  --warning-foreground: oklch(0.25 0.06 60);
+
+  --border: oklch(0.84 0 0);
+  --input: oklch(0.84 0 0);
+  --ring: oklch(60.06% 0.2416 358.28 / 0.712);
+
+  --sidebar: oklch(0.18 0.02 328);
+  --sidebar-foreground: oklch(0.93 0.01 328);
+  --sidebar-accent: oklch(60.06% 0.2416 358.28);
+  --sidebar-accent-foreground: oklch(0.99 0.01 328);
+
+  --shadow-soft: 0 1px 2px oklch(0.2 0.02 328 / 0.04), 0 8px 24px -8px oklch(0.2 0.02 328 / 0.12);
+  --shadow-soft-lg: 0 2px 4px oklch(0.2 0.02 328 / 0.04), 0 16px 40px -12px oklch(0.2 0.02 328 / 0.16);
+}
+
+.dark {
+  --background: oklch(0.17 0 0);
+  --foreground: oklch(0.95 0 0);
+
+  --card: oklch(0.22 0 0);
+  --card-foreground: oklch(0.95 0 0);
+
+  --popover: oklch(0.22 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+
+  --primary: oklch(0.68 0.22 328);
+  --primary-foreground: oklch(0.15 0.02 328);
+
+  --secondary: oklch(0.28 0 0);
+  --secondary-foreground: oklch(0.95 0 0);
+
+  --muted: oklch(0.26 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+
+  --accent: oklch(0.32 0 0);
+  --accent-foreground: oklch(0.95 0 0);
+
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.15 0.02 25);
+
+  --success: oklch(0.68 0.16 150);
+  --success-foreground: oklch(0.15 0.02 150);
+
+  --warning: oklch(0.78 0.15 78);
+  --warning-foreground: oklch(0.2 0.05 60);
+
+  --border: oklch(0.32 0 0);
+  --input: oklch(0.32 0 0);
+  --ring: oklch(0.68 0.22 328 / 0.5);
+
+  --sidebar: oklch(0.13 0.015 328);
+  --sidebar-foreground: oklch(0.93 0.01 328);
+  --sidebar-accent: oklch(0.68 0.22 328);
+  --sidebar-accent-foreground: oklch(0.15 0.02 328);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.2), 0 8px 24px -8px oklch(0 0 0 / 0.4);
+  --shadow-soft-lg: 0 2px 4px oklch(0 0 0 / 0.2), 0 16px 40px -12px oklch(0 0 0 / 0.5);
+}
+
+@theme inline {
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  --radius-sm: calc(var(--radius) - 10px);
+  --radius-md: calc(var(--radius) - 6px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-soft-lg: var(--shadow-soft-lg);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+}
+
+/* ---- App layout ---- */
+
+.app-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.test-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: var(--warning);
+  color: var(--warning-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.test-mode-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 200px;
+  padding: 20px 12px;
+  background: var(--sidebar);
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: width 0.15s ease;
+}
+
+.app-nav.collapsed {
+  width: 68px;
+}
+
+.app-nav-brand {
+  display: flex;
+  justify-content: center;
+  padding: 0 4px 12px;
+}
+
+.app-nav-brand img {
+  width: 100%;
+  height: auto;
+  max-width: 160px;
+}
+
+.app-nav-brand img.app-nav-brand-mark {
+  max-width: 56px;
+}
+
+.app-nav-collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  margin-bottom: 12px;
+  border: none;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.app-nav-collapse-toggle:hover {
+  opacity: 1;
+  background: color-mix(in oklch, var(--sidebar-foreground) 10%, transparent);
+}
+
+.app-nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-nav-spacer {
+  flex: 1;
+}
+
+.app-nav a,
+.app-nav-gear {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  color: var(--sidebar-foreground);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.app-nav a svg,
+.app-nav-gear svg {
+  flex-shrink: 0;
+}
+
+.app-nav-icon {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.app-nav-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.app-nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.app-nav a:hover,
+.app-nav-gear:hover {
+  background: color-mix(in oklch, var(--sidebar-foreground) 10%, transparent);
+}
+
+.app-nav a.active {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+.app-nav-gear {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.app-nav.collapsed .app-nav-items,
+.app-nav.collapsed .app-nav-gear {
+  align-items: center;
+}
+
+.app-nav.collapsed a,
+.app-nav.collapsed .app-nav-gear {
+  justify-content: center;
+  padding: 10px;
+}
+
+.app-nav-menu-popup {
+  min-width: 200px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft-lg);
+  padding: 6px;
+  outline: none;
+}
+
+.app-nav-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  color: var(--popover-foreground);
+  text-decoration: none;
+  font-size: 14px;
+  outline: none;
+}
+
+.app-nav-menu-item[data-highlighted] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.app-content {
+  flex: 1;
+  padding: 28px 36px;
+  overflow: auto;
+  min-width: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.muted {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.show-inactive-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* ---- Forms ---- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 460px;
+  padding: 20px;
+  margin-bottom: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--destructive);
+  font-size: 13px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.form-field-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.finishing-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--muted);
+  border-radius: var(--radius-md);
+}
+
+.finishing-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.finishing-picker-label {
+  flex: 1;
+  font-size: 14px;
+}
+
+.finishing-picker-price {
+  width: 90px;
+}
+
+.finishing-total-preview {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* ---- Tables ---- */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 24px;
+}
+
+/* Tables sit in a .table-scroll wrapper that carries the card look and
+   scrolls sideways on its own; the page itself never scrolls horizontally.
+   Header labels don't wrap, so they set the table's minimum width. */
+.table-scroll {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 24px;
+}
+
+.table-scroll > .data-table {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 0;
+  overflow: visible;
+}
+
+.data-table th {
+  white-space: nowrap;
+}
+
+/* Names wrap but never squeeze below a readable width; the table scrolls
+   sideways instead. The header cell's min-width sizes the whole column. */
+.data-table .col-name {
+  min-width: 220px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 14px;
+}
+
+.data-table th {
+  background: var(--accent);
+  color: var(--secondary-foreground);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+}
+
+/* FilterableTable: free-text search above, per-column filters under the
+   header row. The filter row keeps normal (not uppercase) text. */
+.filterable-table-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filterable-table-search {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+}
+
+.filterable-table-search input {
+  padding-left: 36px;
+}
+
+.filterable-table-toolbar .show-inactive-toggle {
+  margin-bottom: 0;
+}
+
+.toolbar-date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.filterable-table-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.data-table-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Funnel next to a column title; colored with a count while filtering. */
+.column-filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.column-filter-trigger:hover,
+.column-filter-trigger[data-popup-open] {
+  opacity: 1;
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+
+.column-filter-trigger-active {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.column-filter-count {
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+.column-filter-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 240px;
+  padding: 8px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft-lg);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.column-filter-search {
+  height: 32px;
+  font-size: 13px;
+}
+
+.column-filter-options {
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.column-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.column-filter-option:hover {
+  background: var(--muted);
+}
+
+.column-filter-option label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.column-filter-option-count {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.column-filter-empty {
+  padding: 6px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.column-filter-clear {
+  align-self: stretch;
+}
+
+.data-table .data-table-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.data-table tbody tr:hover {
+  background: var(--muted);
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* ---- Checkout ---- */
+
+.open-sale-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.open-sale-tab-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  min-width: 0;
+  padding: 2px;
+}
+
+.open-sale-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex-shrink: 0;
+  max-width: 220px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--foreground);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.open-sale-tab:hover {
+  background: var(--accent);
+}
+
+.open-sale-tab[data-active] {
+  border-color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 12%, var(--card));
+  box-shadow: var(--shadow-soft);
+}
+
+.open-sale-tab:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.open-sale-tab-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.open-sale-tab[data-active] .open-sale-tab-title {
+  color: var(--primary);
+}
+
+.open-sale-tab-meta {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.open-sale-meta {
+  max-width: 780px;
+  margin-bottom: 10px;
+}
+
+.article-picker-stock {
+  display: block;
+}
+
+.article-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 780px;
+  margin-bottom: 24px;
+}
+
+.article-picker-scan {
+  display: flex;
+  gap: 8px;
+}
+
+.article-picker-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  box-shadow: var(--shadow-soft);
+}
+
+.article-picker-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px;
+}
+
+.price-tag {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.price-tag-list {
+  color: var(--muted-foreground);
+  font-size: 0.9em;
+}
+
+.price-tag-sale {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.line-discount-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.line-discount-editor-row {
+  display: flex;
+  gap: 6px;
+}
+
+.line-discount-kind,
+.line-discount-value {
+  width: 84px;
+  height: 32px;
+}
+
+.cart-stock-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.cart-stock-hint-warning {
+  color: var(--destructive);
+  font-weight: 600;
+}
+
+.cart-table {
+  margin-bottom: 24px;
+}
+
+.cart-quantity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cart-total-label {
+  text-align: right;
+  font-weight: 600;
+}
+
+.cart-total-value {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.payment-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 780px;
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.cash-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.denomination-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.discount-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* Discount type and payment method share one width so they line up. */
+.discount-row .form-field {
+  flex: 1;
+  max-width: 240px;
+}
+
+.payment-method-field {
+  max-width: 240px;
+}
+
+.payment-summary {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  column-gap: 32px;
+  row-gap: 4px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.payment-summary dd {
+  margin: 0;
+  text-align: right;
+}
+
+.payment-summary .payment-summary-total {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.cash-manual-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.cash-manual-row .form-field {
+  flex: 1;
+  max-width: 260px;
+}
+
+.change-breakdown ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+/* ---- Receipt ---- */
+
+.receipt-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.receipt-paper-size-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.receipt-paper-size-select {
+  width: 90px;
+}
+
+/* The receipt is paper: white with dark text in dark mode too, accents in
+   the logo magenta rather than the theme primary. */
+.receipt {
+  --receipt-ink: oklch(0.2 0 0);
+  --receipt-muted: oklch(0.45 0 0);
+  --receipt-rule: oklch(0.85 0 0);
+  --receipt-accent: #e5097f;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 28px 28px 24px;
+  background: white;
+  color: var(--receipt-ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--receipt-accent);
+}
+
+.receipt-logo {
+  width: 150px;
+  height: auto;
+}
+
+.receipt-company {
+  display: flex;
+  flex-direction: column;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--receipt-muted);
+}
+
+.receipt-company strong {
+  color: var(--receipt-ink);
+  font-size: 13px;
+}
+
+.receipt-meta {
+  padding: 14px 0 10px;
+}
+
+.receipt-meta h1 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.receipt-meta dl,
+.receipt-totals,
+.receipt-payment {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 3px;
+  margin: 0;
+}
+
+.receipt-meta dd,
+.receipt-totals dd,
+.receipt-payment dd {
+  margin: 0;
+  text-align: right;
+}
+
+.receipt-meta dt,
+.receipt-payment dt {
+  color: var(--receipt-muted);
+}
+
+.receipt-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 10px;
+}
+
+.receipt-items th {
+  padding: 6px 2px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--receipt-muted);
+  border-bottom: 1px solid var(--receipt-ink);
+}
+
+.receipt-items td {
+  padding: 7px 2px;
+  vertical-align: top;
+  border-bottom: 1px dashed var(--receipt-rule);
+}
+
+.receipt-items .receipt-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt-item-name {
+  display: block;
+  font-weight: 600;
+}
+
+.receipt-item-code {
+  display: block;
+  font-size: 11px;
+  color: var(--receipt-muted);
+}
+
+.receipt-item-promo {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--receipt-accent);
+}
+
+.receipt-totals {
+  padding: 4px 0 10px;
+}
+
+.receipt-totals .receipt-grand-total {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 2px solid var(--receipt-ink);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.receipt-payment {
+  padding: 10px 0;
+  border-top: 1px dashed var(--receipt-rule);
+}
+
+.receipt-pickup {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 2px solid var(--receipt-accent);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.receipt-pickup-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--receipt-accent);
+}
+
+.receipt-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--receipt-rule);
+  text-align: center;
+}
+
+.receipt-footer p {
+  margin: 0;
+}
+
+.receipt-footer-signature {
+  margin-top: 2px !important;
+  font-weight: 600;
+  color: var(--receipt-accent);
+}
+
+@media print {
+  .app-nav,
+  .page-header,
+  .no-print {
+    display: none !important;
+  }
+
+  .app-content {
+    padding: 0;
+  }
+
+  .receipt,
+  .label-sheet {
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    max-width: none;
+  }
+}
+
+/* ---- Statistics ---- */
+
+.stats-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stats-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.stats-chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-soft);
+}
+
+.stats-chart-card h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* ---- Settings / generic section card ---- */
+
+/* Tailwind's preflight zeroes paragraph margins, so the card spaces its
+   children itself: one consistent gap between text, fields and buttons. */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 24px;
+  max-width: 780px;
+  min-width: 0;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Messages can contain long file paths without spaces (e.g. after a
+   restore); let them wrap instead of overflowing the card. */
+.settings-section p {
+  overflow-wrap: anywhere;
+}
+
+.company-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.company-profile-fields,
+.company-profile-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px 18px;
+}
+
+.image-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.image-field-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 90px;
+  flex-shrink: 0;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  /* Logos are made for white paper (the receipt), also in dark mode. */
+  background: #fff;
+}
+
+.image-field-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.image-field-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.settings-section h2 {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.settings-section .form-actions {
+  margin-top: 0;
+}
+
+.settings-path {
+  display: inline-block;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  background: var(--muted);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  max-width: 100%;
+}
+
+.sale-return-panel {
+  max-width: none;
+}
+
+.sale-return-history {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.sale-return-history-entry {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.sale-return-history-entry ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--muted-foreground);
+}
+
+/* ---- Labels (QR etiketten) ---- */
+
+.label-sheet {
+  /* Represents the physical sheet: stays white with dark text in dark mode too. */
+  display: grid;
+  box-sizing: border-box;
+  align-content: start;
+  background: white;
+  color: oklch(0.2 0 0);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Content sizes come from labelContentMetrics() via CSS variables on the
+   sheet, so QR code and text scale with the label size. */
+.label-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--label-gap, 2mm);
+  padding: var(--label-padding, 3mm);
+  border: 1px dashed #ccc;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.label-cell-qr {
+  width: var(--label-qr-size, 17mm);
+  height: var(--label-qr-size, 17mm);
+  flex-shrink: 0;
+}
+
+/* Free and already-used positions are fixed "paper" colors (the sheet is
+   always white) and only visible on screen, see the print rules. */
+.label-cell.label-cell-empty {
+  border-color: oklch(0.88 0 0);
+}
+
+.label-cell.label-cell-skipped {
+  border-color: oklch(0.8 0 0);
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(0.94 0 0) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.label-cell-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.label-cell-name {
+  font-weight: 700;
+  font-size: var(--label-font-size, 9pt);
+  line-height: 1.15;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  /* Wrap at word boundaries; only a single word too long for the line
+     gets broken inside. */
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.label-cell-code {
+  /* Courier New is too thin to read at label sizes. */
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-weight: 600;
+  font-size: calc(var(--label-font-size, 9pt) * 0.85);
+  line-height: 1.2;
+  margin-top: calc(var(--label-font-size, 9pt) * 0.15);
+  color: oklch(0.3 0 0);
+  /* The code must never be cut off: wrap it if the line is too short. */
+  overflow-wrap: anywhere;
+}
+
+.label-cell-price {
+  font-weight: 700;
+  font-size: calc(var(--label-font-size, 9pt) * 1.15);
+  margin-top: calc(var(--label-font-size, 9pt) * 0.2);
+  white-space: nowrap;
+}
+
+/* Labels page: article queue + template on the left, grid settings on the
+   right, both starting at the top. Stacks on narrow windows. */
+.labels-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+  max-width: 1400px;
+}
+
+.labels-layout-column {
+  min-width: 0;
+}
+
+.labels-layout .settings-section,
+.labels-layout .article-picker {
+  max-width: none;
+}
+
+@media (max-width: 980px) {
+  .labels-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.label-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.label-page-preview-section {
+  margin-bottom: 20px;
+}
+
+.label-page-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.label-page-preview-section h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.label-page-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.label-page-preview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label-page-preview-page-number {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.label-page-preview-status-ok,
+.label-page-preview-status-warn {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.label-page-preview-status-ok {
+  color: var(--success);
+  background: color-mix(in oklch, var(--success) 15%, var(--card));
+}
+
+.label-page-preview-status-warn {
+  color: var(--destructive-foreground);
+  background: var(--destructive);
+}
+
+/* Must come after the label screen styles above to win at equal specificity. */
+@media print {
+  .label-sheet {
+    border: none;
+    box-shadow: none;
+    /* A fixed page-height sheet can round past the printable area and push
+       an empty page; the @page size already defines the paper. */
+    height: auto !important;
+  }
+
+  /* Page breaks (break-after on each sheet) only apply in block layout. */
+  .label-page-preview,
+  .label-page-preview-page {
+    display: block;
+    margin: 0;
+  }
+
+  /* Guide lines and position markers are for the screen only. */
+  .label-cell,
+  .label-cell.label-cell-empty,
+  .label-cell.label-cell-skipped {
+    border-color: transparent;
+    background: none;
+  }
+}

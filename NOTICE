@@ -1,0 +1,13 @@
+Tiny Sales
+Copyright 2026 Swen Loeffler
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product bundles third-party software, each under its own license:
+- Montserrat font (via @fontsource/montserrat), SIL Open Font License 1.1
+- Further libraries listed in package.json and src-tauri/Cargo.toml, under
+  permissive licenses (MIT, Apache-2.0, BSD, ISC, Zlib, Unicode-3.0) or
+  MPL-2.0; see each package for its license text.
+
+Company names, logos and other details entered by users in the app are not
+part of this project and are not covered by its license.

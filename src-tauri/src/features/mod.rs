@@ -1,0 +1,9 @@
+pub mod article;
+pub mod company_profile;
+pub mod label_template;
+pub mod open_sale;
+pub mod product_group;
+pub mod product_subgroup;
+pub mod sale;
+pub mod sale_return;
+pub mod settings;
