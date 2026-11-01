@@ -22,6 +22,7 @@ import { useAppVersionQuery, useInstallUpdate, useUpdateCheckQuery } from "../ho
 import { useCompanyProfileQuery, useSaveCompanyProfile } from "../hooks/useCompanyProfile";
 import { useTheme } from "../hooks/useTheme";
 import { confirmAction } from "../lib/confirm";
+import { pickExistingDatabase, pickNewDatabasePath } from "../lib/databaseFiles";
 import { THEME_LABELS, THEME_PREFERENCES } from "../lib/theme";
 import { confirmUpdate, installLabel } from "../lib/update";
 import type { ThemePreference } from "../lib/theme";
@@ -57,25 +58,15 @@ export function SettingsPage() {
     installUpdate.mutate(update);
   }
 
-  // An open dialog: picking an existing file never asks to overwrite it.
   async function handleOpenDatabase() {
     createDatabase.reset();
-    const path = await open({
-      title: "Bestehende Datenbank öffnen",
-      defaultPath: dbPath,
-      filters: [{ name: "SQLite-Datenbank", extensions: ["db"] }],
-      multiple: false,
-    });
-    if (path && typeof path === "string") openDatabase.mutate(path);
+    const path = await pickExistingDatabase(dbPath);
+    if (path) openDatabase.mutate(path);
   }
 
   async function handleCreateDatabase() {
     openDatabase.reset();
-    const path = await save({
-      title: "Neue Datenbank anlegen",
-      defaultPath: "kasse-neu.db",
-      filters: [{ name: "SQLite-Datenbank", extensions: ["db"] }],
-    });
+    const path = await pickNewDatabasePath();
     if (path) createDatabase.mutate(path);
   }
 

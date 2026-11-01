@@ -3,6 +3,8 @@ import type { ReceiptPaperSize } from "../../types/settings";
 
 export const settingsApi = {
   getDbPath: () => invokeCommand<string>("get_db_path"),
+  getDatabaseError: () => invokeCommand<string | null>("get_database_error"),
+  retryDatabase: () => invokeCommand<void>("retry_database"),
   openDatabase: (path: string) => invokeCommand<void>("open_database", { path }),
   createDatabase: (path: string) => invokeCommand<void>("create_database", { path }),
   backupDatabase: (destination: string) => invokeCommand<void>("backup_database", { destination }),
