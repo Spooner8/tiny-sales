@@ -6,7 +6,7 @@ use crate::money;
 
 use super::model::{
     ArticleRevenue, DailyRevenue, NewSale, PaymentMethod, PreparedSale, PreparedSaleItem,
-    LineDiscountInput, ProductGroupRevenue, Sale, SaleDiscountInput, SaleWithItems,
+    LineDiscountInput, ProductGroupRevenue, SaleDiscountInput, SaleListEntry, SaleWithItems,
 };
 use super::repository::SaleRepository;
 
@@ -170,7 +170,7 @@ impl SaleService {
         }
     }
 
-    pub async fn list(pool: &SqlitePool, from: &str, to: &str) -> Result<Vec<Sale>, AppError> {
+    pub async fn list(pool: &SqlitePool, from: &str, to: &str) -> Result<Vec<SaleListEntry>, AppError> {
         SaleRepository::list(pool, from, to).await
     }
 

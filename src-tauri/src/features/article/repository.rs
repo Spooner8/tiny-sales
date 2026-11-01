@@ -16,7 +16,9 @@ struct ArticleRow {
     name: String,
     product_group_id: i64,
     product_subgroup_id: i64,
-    pattern_number: Option<String>,
+    internal_number: Option<String>,
+    description: Option<String>,
+    is_finishing: bool,
     price_cents: i64,
     stock: i64,
     active: bool,
@@ -32,7 +34,7 @@ struct ArticleComponentRow {
     component_article_id: i64,
     code: String,
     name: String,
-    pattern_number: Option<String>,
+    internal_number: Option<String>,
     price_cents: i64,
 }
 
@@ -46,7 +48,9 @@ impl ArticleRow {
             name: self.name,
             product_group_id: self.product_group_id,
             product_subgroup_id: self.product_subgroup_id,
-            pattern_number: self.pattern_number,
+            internal_number: self.internal_number,
+            description: self.description,
+            is_finishing: self.is_finishing,
             price_cents: self.price_cents,
             stock: self.stock,
             active: self.active,
@@ -62,7 +66,7 @@ impl ArticleRow {
 }
 
 const SELECT_FIELDS: &str =
-    "id, code, name, product_group_id, product_subgroup_id, pattern_number, price_cents, stock, active, discontinued, discount_percent, created_at, updated_at";
+    "id, code, name, product_group_id, product_subgroup_id, internal_number, description, is_finishing, price_cents, stock, active, discontinued, discount_percent, created_at, updated_at";
 
 pub struct ArticleRepository;
 
@@ -115,7 +119,7 @@ impl ArticleRepository {
         let query = format!(
             "SELECT article_component.article_id as article_id,
                     article_component.component_article_id as component_article_id,
-                    article.code as code, article.name as name, article.pattern_number as pattern_number,
+                    article.code as code, article.name as name, article.internal_number as internal_number,
                     COALESCE(article_component.price_override_cents, article.price_cents) as price_cents
              FROM article_component
              JOIN article ON article_component.component_article_id = article.id
@@ -134,7 +138,7 @@ impl ArticleRepository {
                 component_article_id: row.component_article_id,
                 code: row.code,
                 name: row.name,
-                pattern_number: row.pattern_number,
+                internal_number: row.internal_number,
                 price_cents: row.price_cents,
             });
         }
@@ -164,6 +168,15 @@ impl ArticleRepository {
         Ok(())
     }
 
+    /// How many articles have this one attached as a component.
+    pub async fn count_component_uses(pool: &SqlitePool, id: i64) -> Result<i64, AppError> {
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM article_component WHERE component_article_id = ?")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
+        Ok(count)
+    }
+
     pub async fn code_exists(pool: &SqlitePool, code: &str) -> Result<bool, AppError> {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM article WHERE code = ?")
             .bind(code)
@@ -180,14 +193,16 @@ impl ArticleRepository {
         let mut tx = pool.begin().await?;
 
         let id = sqlx::query(
-            "INSERT INTO article (code, name, product_group_id, product_subgroup_id, pattern_number, price_cents, stock, active, discontinued, discount_percent)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
+            "INSERT INTO article (code, name, product_group_id, product_subgroup_id, internal_number, description, is_finishing, price_cents, stock, active, discontinued, discount_percent)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
         )
         .bind(code)
         .bind(&input.name)
         .bind(input.product_group_id)
         .bind(input.product_subgroup_id)
-        .bind(&input.pattern_number)
+        .bind(&input.internal_number)
+        .bind(&input.description)
+        .bind(input.is_finishing)
         .bind(input.price_cents)
         .bind(input.stock)
         .bind(input.discontinued)
@@ -209,13 +224,15 @@ impl ArticleRepository {
 
         sqlx::query(
             "UPDATE article
-             SET name = ?, product_group_id = ?, product_subgroup_id = ?, pattern_number = ?, price_cents = ?, stock = ?, active = ?, discontinued = ?, discount_percent = ?, updated_at = CURRENT_TIMESTAMP
+             SET name = ?, product_group_id = ?, product_subgroup_id = ?, internal_number = ?, description = ?, is_finishing = ?, price_cents = ?, stock = ?, active = ?, discontinued = ?, discount_percent = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
         )
         .bind(&input.name)
         .bind(input.product_group_id)
         .bind(input.product_subgroup_id)
-        .bind(&input.pattern_number)
+        .bind(&input.internal_number)
+        .bind(&input.description)
+        .bind(input.is_finishing)
         .bind(input.price_cents)
         .bind(input.stock)
         .bind(input.active)

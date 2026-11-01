@@ -42,7 +42,7 @@ export function LabelQueueEditor({ articles, entries, onChange }: LabelQueueEdit
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Artikel suchen (Name, Art-Nr. oder Muster-Nr.)..."
+        placeholder="Artikel suchen (Name, Art-Nr. oder Interne Nr.)..."
       />
 
       {matches.length > 0 && (

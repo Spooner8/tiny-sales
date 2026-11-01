@@ -11,6 +11,8 @@ export interface SaleItemDetail {
   articleId: number;
   articleCode: string;
   articleName: string;
+  /** The article's current internal number ("Interne Nr."). */
+  articleInternalNumber: string | null;
   quantity: number;
   /** Regular unit price before the article promotion. */
   listPriceCents: number;
@@ -45,6 +47,26 @@ export interface Sale {
   pickupNumber: string | null;
   cashGivenCents: number | null;
   changeCents: number | null;
+}
+
+/**
+ * One row of the sales list: a sale, or a return booked against one. A
+ * return has a negative total, so the list adds up to the net revenue.
+ */
+export interface SaleListEntry {
+  saleId: number;
+  /** Set for returns. */
+  returnId: number | null;
+  timestamp: string;
+  /** For returns: how the money was refunded. */
+  paymentMethod: PaymentMethod;
+  totalCents: number;
+  pickupNumber: string | null;
+}
+
+/** Receipt number shown for a list entry: "42", or "R-42" for a return of sale 42. */
+export function receiptNumber(entry: SaleListEntry): string {
+  return entry.returnId === null ? String(entry.saleId) : `R-${entry.saleId}`;
 }
 
 export interface SaleWithItems {

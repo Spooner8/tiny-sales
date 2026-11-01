@@ -5,14 +5,14 @@ import type {
   NewSale,
   NewSaleReturn,
   ProductGroupRevenue,
-  Sale,
+  SaleListEntry,
   SaleReturnWithItems,
   SaleWithItems,
 } from "../../types/sale";
 
 export const saleApi = {
   create: (input: NewSale) => invokeCommand<SaleWithItems>("create_sale", { input }),
-  list: (from: string, to: string) => invokeCommand<Sale[]>("list_sales", { from, to }),
+  list: (from: string, to: string) => invokeCommand<SaleListEntry[]>("list_sales", { from, to }),
   get: (id: number) => invokeCommand<SaleWithItems>("get_sale", { id }),
   createReturn: (input: NewSaleReturn) => invokeCommand<SaleReturnWithItems>("create_sale_return", { input }),
   listReturns: (saleId: number) => invokeCommand<SaleReturnWithItems[]>("list_sale_returns", { saleId }),

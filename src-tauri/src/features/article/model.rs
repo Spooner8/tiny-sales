@@ -9,7 +9,7 @@ pub struct ArticleComponentDetail {
     pub component_article_id: i64,
     pub code: String,
     pub name: String,
-    pub pattern_number: Option<String>,
+    pub internal_number: Option<String>,
     pub price_cents: i64,
 }
 
@@ -21,7 +21,11 @@ pub struct Article {
     pub name: String,
     pub product_group_id: i64,
     pub product_subgroup_id: i64,
-    pub pattern_number: Option<String>,
+    /// Shown as "Interne Nr." in the app.
+    pub internal_number: Option<String>,
+    pub description: Option<String>,
+    /// Only finishings can be attached to other articles as components.
+    pub is_finishing: bool,
     pub price_cents: i64,
     pub stock: i64,
     pub active: bool,
@@ -51,7 +55,9 @@ pub struct NewArticle {
     pub name: String,
     pub product_group_id: i64,
     pub product_subgroup_id: i64,
-    pub pattern_number: Option<String>,
+    pub internal_number: Option<String>,
+    pub description: Option<String>,
+    pub is_finishing: bool,
     pub price_cents: i64,
     pub stock: i64,
     pub discontinued: bool,
@@ -66,7 +72,9 @@ pub struct UpdateArticle {
     pub name: String,
     pub product_group_id: i64,
     pub product_subgroup_id: i64,
-    pub pattern_number: Option<String>,
+    pub internal_number: Option<String>,
+    pub description: Option<String>,
+    pub is_finishing: bool,
     pub price_cents: i64,
     pub stock: i64,
     pub active: bool,

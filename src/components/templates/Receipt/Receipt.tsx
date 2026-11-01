@@ -126,7 +126,10 @@ export function Receipt({ sale, company, paperSize, onPaperSizeChange, onNewSale
               <tr key={item.articleId}>
                 <td>
                   <span className="receipt-item-name">{item.articleName}</span>
-                  <span className="receipt-item-code">{formatArticleCode(item.articleCode)}</span>
+                  <span className="receipt-item-code">
+                    {formatArticleCode(item.articleCode)}
+                    {item.articleInternalNumber && ` / ${item.articleInternalNumber}`}
+                  </span>
                   {lineDiscountNote(item) && <span className="receipt-item-promo">{lineDiscountNote(item)}</span>}
                 </td>
                 <td className="receipt-num">{item.quantity}</td>

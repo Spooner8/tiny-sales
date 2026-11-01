@@ -20,10 +20,10 @@ export function formatArticleCode(code: string): string {
 
 /**
  * Free-text article search over name, article number (also typed with the
- * old "ART-" prefix) and pattern number - not case sensitive.
+ * old "ART-" prefix) and internal number - not case sensitive.
  */
 export function matchesArticleSearch(
-  article: { name: string; code: string; patternNumber: string | null },
+  article: { name: string; code: string; internalNumber: string | null },
   query: string,
 ): boolean {
   const text = query.trim().toLowerCase();
@@ -32,12 +32,12 @@ export function matchesArticleSearch(
   return (
     article.name.toLowerCase().includes(text) ||
     (code !== "" && article.code.toLowerCase().includes(code)) ||
-    (article.patternNumber?.toLowerCase().includes(text) ?? false)
+    (article.internalNumber?.toLowerCase().includes(text) ?? false)
   );
 }
 
-/** e.g. "Art-Nr. K7Q2XM · Muster-Nr. STR-001" */
-export function formatArticleReference(article: { code: string; patternNumber: string | null }): string {
-  const pattern = article.patternNumber ? ` · Muster-Nr. ${article.patternNumber}` : "";
-  return `${formatArticleCode(article.code)}${pattern}`;
+/** e.g. "Art-Nr. K7Q2XM · Interne Nr. STR-001" */
+export function formatArticleReference(article: { code: string; internalNumber: string | null }): string {
+  const internal = article.internalNumber ? ` · Interne Nr. ${article.internalNumber}` : "";
+  return `${formatArticleCode(article.code)}${internal}`;
 }

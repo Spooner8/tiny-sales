@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "../components/atoms/Button";
+import { Modal } from "../components/molecules/Modal";
 import { PageHeader } from "../components/molecules/PageHeader";
 import { ShowInactiveToggle } from "../components/molecules/ShowInactiveToggle";
 import { ProductSubgroupForm } from "../components/organisms/ProductSubgroupForm";
@@ -58,22 +59,28 @@ export function ProductSubgroupsPage() {
         action={<Button onClick={() => setEditing("new")}>Neue Warenuntergruppe</Button>}
       />
 
-      {editing && productGroups && (
-        <ProductSubgroupForm
-          initial={editing === "new" ? undefined : editing}
-          productGroups={activeProductGroups}
-          submitting={activeMutation.isPending}
-          errorMessage={activeMutation.error?.message}
-          onCancel={closeForm}
-          onSubmit={(values) => {
-            const action =
-              editing === "new"
-                ? createMutation.mutateAsync(values)
-                : updateMutation.mutateAsync({ id: editing.id, ...values });
-            action.then(closeForm).catch(() => {});
-          }}
-        />
-      )}
+      <Modal
+        open={editing !== null}
+        title={editing === "new" ? "Neue Warenuntergruppe" : "Warenuntergruppe bearbeiten"}
+        onClose={closeForm}
+      >
+        {editing && productGroups && (
+          <ProductSubgroupForm
+            initial={editing === "new" ? undefined : editing}
+            productGroups={activeProductGroups}
+            submitting={activeMutation.isPending}
+            errorMessage={activeMutation.error?.message}
+            onCancel={closeForm}
+            onSubmit={(values) => {
+              const action =
+                editing === "new"
+                  ? createMutation.mutateAsync(values)
+                  : updateMutation.mutateAsync({ id: editing.id, ...values });
+              action.then(closeForm).catch(() => {});
+            }}
+          />
+        )}
+      </Modal>
 
       {isLoading && <p>Wird geladen...</p>}
 

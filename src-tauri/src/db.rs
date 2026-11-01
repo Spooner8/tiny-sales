@@ -235,8 +235,8 @@ mod tests {
     const SEED_V1: &str = "
         INSERT INTO product_group (id, name) VALUES (1, 'Shirts');
         INSERT INTO product_subgroup (id, name, product_group_id) VALUES (1, 'Kinder', 1);
-        INSERT INTO article (id, code, name, product_group_id, product_subgroup_id, price_cents, stock)
-            VALUES (1, 'A1', 'Shirt', 1, 1, 2500, 3), (2, 'A2', 'Druck', 1, NULL, 500, 10);
+        INSERT INTO article (id, code, name, product_group_id, product_subgroup_id, pattern_number, price_cents, stock)
+            VALUES (1, 'A1', 'Shirt', 1, 1, 'STR-001', 2500, 3), (2, 'A2', 'Druck', 1, NULL, NULL, 500, 10);
         INSERT INTO article_component (article_id, component_article_id, price_override_cents) VALUES (1, 2, 400);
         INSERT INTO sale (id, payment_method, status, subtotal_cents, total_cents) VALUES (1, 'Cash', 'Completed', 2900, 2900);
         INSERT INTO sale_item (sale_id, article_id, quantity, list_price_cents, unit_price_cents) VALUES (1, 1, 1, 2900, 2900);
@@ -318,17 +318,22 @@ mod tests {
     #[test]
     fn legacy_database_is_baselined() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
+            // The later migrations run after the baseline and write a backup first.
+            let dir = TempDir::new();
             let pool = memory_pool().await;
-            migrate(&pool, Path::new("unused.db")).await.unwrap();
+            // A legacy database has the schema of the initial migration.
+            migrator_up_to(1).run(&pool).await.unwrap();
             fake_legacy_history(&pool, LEGACY_LAST_VERSION).await;
 
-            migrate(&pool, Path::new("unused.db")).await.unwrap();
+            migrate(&pool, &dir.0.join("tiny-sales.db")).await.unwrap();
 
-            let rows: Vec<(i64, String)> = sqlx::query_as("SELECT version, description FROM _sqlx_migrations")
-                .fetch_all(&pool)
-                .await
-                .unwrap();
-            assert_eq!(rows, vec![(1, "initial schema".to_string())]);
+            let rows: Vec<(i64, String)> =
+                sqlx::query_as("SELECT version, description FROM _sqlx_migrations ORDER BY version")
+                    .fetch_all(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(rows[0], (1, "initial schema".to_string()));
+            assert_eq!(rows.len(), MIGRATOR.iter().count());
         });
     }
 
@@ -371,7 +376,39 @@ mod tests {
                 let migrated = after.iter().find(|(t, _)| t == table).map(|(_, c)| *c);
                 assert_eq!(migrated, Some(*count), "rows of table {table} were lost");
             }
+
+            // 0002: articles attached as a component become finishings.
+            // 0003: the pattern number moves to internal_number.
+            let articles: Vec<(i64, Option<String>, bool)> =
+                sqlx::query_as("SELECT id, internal_number, is_finishing FROM article ORDER BY id")
+                    .fetch_all(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(articles, vec![(1, Some("STR-001".into()), false), (2, None, true)]);
+            let old_column: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('article') WHERE name = 'pattern_number'")
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(old_column, 0, "pattern_number was not dropped");
             pool.close().await;
+        });
+    }
+
+    #[test]
+    fn every_earlier_schema_is_migrated_to_the_latest() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            for migration in MIGRATOR.iter() {
+                let dir = TempDir::new();
+                let pool = memory_pool().await;
+                migrator_up_to(1).run(&pool).await.unwrap();
+                sqlx::raw_sql(SEED_V1).execute(&pool).await.unwrap();
+                migrator_up_to(migration.version).run(&pool).await.unwrap();
+
+                migrate(&pool, &dir.0.join("tiny-sales.db"))
+                    .await
+                    .unwrap_or_else(|err| panic!("from version {}: {err}", migration.version));
+            }
         });
     }
 
@@ -398,7 +435,8 @@ mod tests {
             let dir = TempDir::new();
             let db_path = dir.0.join("tiny-sales.db");
             let pool = connect(&db_path, true).await.unwrap();
-            migrate(&pool, &db_path).await.unwrap();
+            // A database of the first release, with its data.
+            migrator_up_to(1).run(&pool).await.unwrap();
             sqlx::raw_sql(SEED_V1).execute(&pool).await.unwrap();
             // Pretend the migrations are pending; re-running them fails
             // because the tables exist, like a faulty migration would.
