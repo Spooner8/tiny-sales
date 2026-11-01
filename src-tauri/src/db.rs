@@ -221,15 +221,6 @@ mod tests {
     use super::*;
     use std::borrow::Cow;
 
-    /// SHA-384 checksums of the migrations in released versions. sqlx refuses
-    /// to start on a database whose recorded checksum differs, so editing a
-    /// released migration would lock users out after the update. Add each
-    /// new migration here when releasing it.
-    const RELEASED_MIGRATIONS: &[(i64, &str)] = &[(
-        1,
-        "94092b17862cde8ff8c142a16a0c2fc4eb11c15466eca6b3d390b6efce71d3f4d48194683e77fe1a7284379b6fbe6f90",
-    )];
-
     /// Data in every table of the initial schema, as a database of the first
     /// release could contain it.
     const SEED_V1: &str = "
@@ -347,15 +338,32 @@ mod tests {
         });
     }
 
+    /// sqlx refuses to start on a database whose recorded checksum of a
+    /// migration differs from the file, so changing a released migration
+    /// would lock users out after the update. The release tags (`v*`) record
+    /// which migrations were released: none of them may differ from the
+    /// working tree, be renamed or deleted. New migrations are new files.
     #[test]
     fn released_migrations_are_unchanged() {
-        for (version, expected) in RELEASED_MIGRATIONS {
-            let migration = MIGRATOR
-                .iter()
-                .find(|m| m.version == *version)
-                .unwrap_or_else(|| panic!("released migration {version} is missing"));
-            let checksum: String = migration.checksum.iter().map(|b| format!("{b:02x}")).collect();
-            assert_eq!(&checksum, expected, "released migration {version} was changed - add a new migration instead");
+        let git = |args: &[&str]| -> String {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(env!("CARGO_MANIFEST_DIR"))
+                .output()
+                .expect("git is needed to check the released migrations");
+            assert!(output.status.success(), "git {}: {}", args.join(" "), String::from_utf8_lossy(&output.stderr));
+            String::from_utf8(output.stdout).unwrap()
+        };
+
+        let tags = git(&["tag", "--list", "v*"]);
+        // Without tags nothing would be checked; CI must fetch them (fetch-depth: 0).
+        assert!(!tags.trim().is_empty(), "no release tags (v*) found to check the migrations against");
+        for tag in tags.lines() {
+            let changed = git(&["diff", "--name-status", "--diff-filter=DMRT", tag, "--", "migrations"]);
+            assert!(
+                changed.trim().is_empty(),
+                "migrations released in {tag} were changed, renamed or deleted - add a new migration instead:\n{changed}"
+            );
         }
     }
 
