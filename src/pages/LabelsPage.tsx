@@ -11,6 +11,7 @@ import { useArticlesQuery } from "../hooks/useArticles";
 import { useCreateLabelTemplate, useLabelTemplatesQuery, useUpdateLabelTemplate } from "../hooks/useLabelTemplates";
 import { buildLabelPages } from "../lib/labels/buildPages";
 import type { LabelEntry, LabelGridConfig } from "../lib/labels/buildPages";
+import { applyPrintPageStyle } from "../lib/printPage";
 import { parseNumericInput } from "../lib/utils";
 import { PAPER_ORIENTATION_LABELS, PAPER_ORIENTATIONS } from "../types/labelTemplate";
 import type { PaperOrientation } from "../types/labelTemplate";
@@ -31,14 +32,7 @@ const DEFAULT_CONFIG: LabelGridConfig = {
 };
 
 function applyPrintStyle(paperSize: ReceiptPaperSize, orientation: PaperOrientation) {
-  const styleId = "label-print-page-size";
-  let style = document.getElementById(styleId) as HTMLStyleElement | null;
-  if (!style) {
-    style = document.createElement("style");
-    style.id = styleId;
-    document.head.appendChild(style);
-  }
-  style.textContent = `@page { size: ${paperSize} ${orientation}; margin: 0; }`;
+  applyPrintPageStyle(`@page { size: ${paperSize} ${orientation}; margin: 0; }`);
 }
 
 export function LabelsPage() {
