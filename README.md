@@ -70,12 +70,25 @@ One-time setup:
 2. Put the content of `~/.tauri/tiny-sales.key.pub` into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`.
 3. Add the repository secrets `TAURI_SIGNING_PRIVATE_KEY` (content of `~/.tauri/tiny-sales.key`) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` under **Settings → Secrets and variables → Actions**.
 
+### Branches
+
+The project uses Gitflow: `main` holds released versions only, `develop` is the integration branch. Work happens on `feature/*` branches off `develop`, releases are prepared on `release/*` and urgent fixes for a released version on `hotfix/*` (both merged into `main` and back into `develop`). CI runs for pushes to `main` and `develop` and for every pull request.
+
 Publishing a release:
 
-1. Set the new version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, and run `cargo check` in `src-tauri` to update `Cargo.lock`.
-2. If the release contains new migrations, add them to `RELEASED_MIGRATIONS` (see above).
-3. Commit, then tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
-4. The workflow `.github/workflows/release.yml` checks that the tag matches the version, runs the tests, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
+1. Create the release branch: `git checkout -b release/0.2.0 develop`.
+2. Set the new version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, and run `cargo check` in `src-tauri` to update `Cargo.lock`.
+3. If the release contains new migrations, add them to `RELEASED_MIGRATIONS` (see above). From now on they must not change.
+4. Commit, push and merge the release branch into `main` (pull request).
+5. Tag the merge commit on `main` and push the tag:
+   ```sh
+   git checkout main && git pull
+   git tag v0.2.0 && git push origin v0.2.0
+   ```
+6. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, runs the tests, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
+7. Merge `main` back into `develop`, so the version bump and `RELEASED_MIGRATIONS` are there too.
+
+Hotfixes work the same way, starting with `git checkout -b hotfix/0.2.1 main`.
 
 Local release builds (`npm run tauri build`) also sign the updater artifacts, so set `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment first.
 

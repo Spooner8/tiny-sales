@@ -1,6 +1,6 @@
 # Builds, signs and publishes a release when a version tag (e.g. v0.2.0) is
-# pushed. The release is created as a draft: the installed apps only see it
-# (via latest.json) once it has been published on GitHub.
+# pushed on main. The release is created as a draft: the installed apps only
+# see it (via latest.json) once it has been published on GitHub.
 
 name: Release
 
@@ -15,6 +15,18 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Gitflow: releases come from main only, never from develop or a
+      # feature branch.
+      - name: Check that the tag is on main
+        shell: bash
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on main - merge the release branch into main and tag there"
+            exit 1
+          fi
 
       - name: Check that the tag matches the app version
         shell: bash
