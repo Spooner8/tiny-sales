@@ -78,7 +78,7 @@ CI (`.github/workflows/ci.yml`) runs for pushes to `feature/*`, `hotfix/*` and `
 
 Publishing a release:
 
-1. On `develop`, set the new version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, and run `cargo check` in `src-tauri` to update `Cargo.lock`.
+1. On `develop`, raise the version with `npm run version:patch`, `version:minor` or `version:major`. It updates `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`.
 2. If the release contains new migrations, add them to `RELEASED_MIGRATIONS` (see above). From now on they must not change.
 3. Push and merge `develop` into `main` (pull request).
 4. Tag the merge commit on `main` and push the tag:
