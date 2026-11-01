@@ -37,7 +37,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "TAURI_UPDATER_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ4NEIyNUM3QjUzMTZBMUYKUldRZmFqRzF4eVZMMkpab3I4bitQZm84aXV2VlNCc1ZRcWxvT3V2YnRFcFRWRkF6ZGRJbWJzZDEK",
       "endpoints": [
         "https://github.com/Spooner8/tiny-sales/releases/latest/download/latest.json"
       ],
