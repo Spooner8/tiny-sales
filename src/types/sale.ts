@@ -1,11 +1,36 @@
-export const PAYMENT_METHODS = ["Cash", "Twint", "Card"] as const;
+export const PAYMENT_METHODS = ["Cash", "Twint", "Card", "Invoice", "BankTransfer"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   Cash: "Bar",
   Twint: "Twint",
   Card: "Karte (SumUp)",
+  Invoice: "Rechnung",
+  BankTransfer: "Überweisung",
 };
+
+/**
+ * Whether the money is taken at the checkout. An invoice is paid later, so
+ * an order paid by invoice is completed without the checkout (mirrors
+ * `PaymentMethod::paid_at_checkout`).
+ */
+export function paidAtCheckout(method: PaymentMethod): boolean {
+  return method === "Cash" || method === "Twint" || method === "Card";
+}
+
+/** What the checkout offers. */
+export const CHECKOUT_PAYMENT_METHODS = PAYMENT_METHODS.filter(paidAtCheckout);
+
+/** An order is paid at the checkout or by invoice. */
+export const ORDER_PAYMENT_METHODS: readonly PaymentMethod[] = [...CHECKOUT_PAYMENT_METHODS, "Invoice"];
+
+/** A return is refunded at the checkout or by bank transfer. */
+export const REFUND_METHODS: readonly PaymentMethod[] = [...CHECKOUT_PAYMENT_METHODS, "BankTransfer"];
+
+/** Receipt numbers have five digits: sale 1 is "00001". */
+export function formatReceiptNumber(saleId: number): string {
+  return String(saleId).padStart(5, "0");
+}
 
 export interface SaleItemDetail {
   articleId: number;
@@ -20,14 +45,19 @@ export interface SaleItemDetail {
   unitPriceCents: number;
   /** Article promotion in percent at the time of sale (0 = none). */
   articleDiscountPercent: number;
-  /** Set when a line discount was given at checkout. */
-  lineDiscountKind: LineDiscount["kind"] | null;
-  /** The percentage, or the overridden unit price in Rappen. */
+  /**
+   * Set when a line discount was given. "price" (a new unit price) only
+   * occurs on sales from before line discounts became amounts off.
+   */
+  lineDiscountKind: LineDiscount["kind"] | "price" | null;
+  /** The percentage, the amount off per unit or the new unit price in Rappen. */
   lineDiscountValue: number | null;
   /** quantity * unitPriceCents, before the sale discount. */
   lineTotalCents: number;
   /** This line's share of the sale discount. */
   discountCents: number;
+  /** Extra information from the customer order line. */
+  note: string | null;
 }
 
 export interface Sale {
@@ -47,6 +77,18 @@ export interface Sale {
   pickupNumber: string | null;
   cashGivenCents: number | null;
   changeCents: number | null;
+  /** VAT rate when the sale was booked; null for sales from before VAT was recorded. */
+  vatRatePercent: number | null;
+  /** VAT contained in totalCents. */
+  vatCents: number | null;
+  /** Set for sales that completed a customer order. */
+  customerOrderId: number | null;
+  customerName: string | null;
+  customerCompany: string | null;
+  /** Set for sales paid by invoice. */
+  invoiceId: number | null;
+  /** Day the invoice was paid ("YYYY-MM-DD"); null while it is open. */
+  invoicePaidOn: string | null;
 }
 
 /**
@@ -62,11 +104,18 @@ export interface SaleListEntry {
   paymentMethod: PaymentMethod;
   totalCents: number;
   pickupNumber: string | null;
+  /** For sales of a customer order. */
+  customerName: string | null;
+  customerCompany: string | null;
+  /** For sales paid by invoice (not set on their returns). */
+  invoiceId: number | null;
+  invoicePaidOn: string | null;
 }
 
-/** Receipt number shown for a list entry: "42", or "R-42" for a return of sale 42. */
+/** Receipt number shown for a list entry: "00042", or "R-00042" for a return of sale 42. */
 export function receiptNumber(entry: SaleListEntry): string {
-  return entry.returnId === null ? String(entry.saleId) : `R-${entry.saleId}`;
+  const number = formatReceiptNumber(entry.saleId);
+  return entry.returnId === null ? number : `R-${number}`;
 }
 
 export interface SaleWithItems {
@@ -80,8 +129,8 @@ export interface NewSaleItem {
   discount: LineDiscount | null;
 }
 
-/** Discount on one line: percent off the current price, or a new unit price in Rappen. */
-export type LineDiscount = { kind: "percent"; value: number } | { kind: "price"; value: number };
+/** Discount on one line: percent off the current price, or an amount off per unit in Rappen. */
+export type LineDiscount = { kind: "percent"; value: number } | { kind: "amount"; value: number };
 
 export interface NewSale {
   items: NewSaleItem[];

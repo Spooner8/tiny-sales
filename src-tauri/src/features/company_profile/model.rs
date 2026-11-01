@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// The shop's own details, printed on receipts and shown in the menu.
+/// The shop's own details, printed on receipts and invoices and shown in the menu.
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct CompanyProfile {
@@ -19,4 +19,10 @@ pub struct CompanyProfile {
     pub logo: Option<String>,
     /// Optional square mark for the collapsed menu as a data URL.
     pub logo_mark: Option<String>,
+    /// Account for the QR payment part of invoices (IBAN or QR-IBAN).
+    pub iban: String,
+    /// Payment term of invoices in days.
+    pub invoice_payment_days: i64,
+    /// VAT rate for new sales in percent; 0 shows no VAT.
+    pub vat_rate_percent: f64,
 }

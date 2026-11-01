@@ -1,6 +1,9 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { Button } from "../components/atoms/Button";
 import { Input } from "../components/atoms/Input";
+import { Modal } from "../components/molecules/Modal";
 import { OpenSaleTabs } from "../components/molecules/OpenSaleTabs";
 import type { OpenSaleTab } from "../components/molecules/OpenSaleTabs";
 import { PageHeader } from "../components/molecules/PageHeader";
@@ -13,6 +16,7 @@ import { Receipt } from "../components/templates/Receipt";
 import { useArticlesQuery } from "../hooks/useArticles";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { useCompanyProfileQuery } from "../hooks/useCompanyProfile";
+import { useCustomerOrdersQuery } from "../hooks/useCustomerOrders";
 import {
   getRememberedOpenSaleId,
   useActiveOpenSaleId,
@@ -23,6 +27,7 @@ import {
 import { useReceiptPaperSizeQuery, useSetReceiptPaperSize } from "../hooks/useSettings";
 import { useCreateSale } from "../hooks/useSale";
 import { findArticleByCode } from "../lib/articleCode";
+import { formatChf } from "../lib/money/change";
 import { confirmAction } from "../lib/confirm";
 import {
   EMPTY_LINE_DISCOUNT,
@@ -30,11 +35,15 @@ import {
   parseLineDiscount,
   parseSaleDiscount,
   saleDiscountCents,
+  upgradeLineDiscountDraft,
 } from "../lib/money/discount";
 import type { DiscountableLine, LineDiscountDraft } from "../lib/money/discount";
 import { isBlankOpenSale, openSaleTitle, reservedQuantities } from "../lib/openSales";
 import type { Article } from "../types/article";
+import { customerLabel } from "../types/customer";
+import { ORDER_STATUS_LABELS } from "../types/customerOrder";
 import type { OpenSale } from "../types/openSale";
+import { paidAtCheckout } from "../types/sale";
 import type { SaleWithItems } from "../types/sale";
 import type { ReceiptPaperSize } from "../types/settings";
 
@@ -61,6 +70,13 @@ export function CheckoutPage() {
   const [completedSale, setCompletedSale] = useState<SaleWithItems | null>(null);
   const [paperSize, setPaperSize] = useState<ReceiptPaperSize>("A4");
   const [scanError, setScanError] = useState<string | null>(null);
+  const [pickingOrder, setPickingOrder] = useState(false);
+  const navigate = useNavigate();
+  const { data: orders } = useCustomerOrdersQuery();
+  // Orders paid at the checkout and not completed yet, oldest first.
+  const ordersToCheckOut = (orders ?? [])
+    .filter((order) => order.saleId === null && paidAtCheckout(order.paymentMethod) && order.items.length > 0)
+    .reverse();
 
   useEffect(() => {
     if (defaultPaperSize) setPaperSize(defaultPaperSize);
@@ -92,11 +108,12 @@ export function CheckoutPage() {
       .map((item) => {
         const article = articlesById.get(item.articleId);
         if (!article) return null;
-        const { discount, error } = parseLineDiscount(item.discount, article.salePriceCents);
+        const draft = upgradeLineDiscountDraft(item.discount, article.salePriceCents);
+        const { discount, error } = parseLineDiscount(draft, article.salePriceCents);
         return {
           article,
           quantity: item.quantity,
-          discountDraft: item.discount,
+          discountDraft: draft,
           discount,
           discountError: error,
           unitPriceCents: lineUnitPriceCents(article.salePriceCents, discount),
@@ -198,7 +215,7 @@ export function CheckoutPage() {
         setScanError(`Art-Nr. "${code}" nicht gefunden`);
       }
     },
-    !completedSale && articles !== undefined && activeSale !== null,
+    !completedSale && !pickingOrder && articles !== undefined && activeSale !== null,
   );
 
   /** A sale left without items or name isn't worth keeping as a tab. */
@@ -294,9 +311,45 @@ export function CheckoutPage() {
     );
   }
 
+  const orderPicker = (
+    <Modal open={pickingOrder} title="Auftrag abrechnen" onClose={() => setPickingOrder(false)}>
+      {ordersToCheckOut.length === 0 ? (
+        <p className="muted">Keine offenen Aufträge zum Abrechnen an der Kasse.</p>
+      ) : (
+        <ul className="article-picker-results">
+          {ordersToCheckOut.map((order) => (
+            <li key={order.id} className="article-picker-result">
+              <span>
+                Auftrag {order.id} · {customerLabel(order.customerName, order.customerCompany)}
+                <span className="article-picker-stock muted">
+                  {ORDER_STATUS_LABELS[order.status]} · {formatChf(order.totalCents)} CHF
+                </span>
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void navigate({ to: "/orders/$orderId/checkout", params: { orderId: String(order.id) } })}
+              >
+                Abrechnen
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
+  );
+
   return (
     <section>
-      <PageHeader title="Kasse" />
+      <PageHeader
+        title="Kasse"
+        action={
+          <Button type="button" variant="secondary" onClick={() => setPickingOrder(true)}>
+            Auftrag abrechnen{ordersToCheckOut.length > 0 ? ` (${ordersToCheckOut.length})` : ""}
+          </Button>
+        }
+      />
+      {orderPicker}
 
       {(isLoading || !openSales) && <p>Wird geladen...</p>}
 

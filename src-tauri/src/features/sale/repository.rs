@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, Sqlite, SqlitePool, Transaction};
 
 use crate::error::AppError;
 use crate::features::open_sale::repository::OpenSaleRepository;
@@ -27,6 +27,13 @@ struct SaleRow {
     pickup_number: Option<String>,
     cash_given_cents: Option<i64>,
     change_cents: Option<i64>,
+    vat_rate_percent: Option<f64>,
+    vat_cents: Option<i64>,
+    customer_order_id: Option<i64>,
+    customer_name: Option<String>,
+    customer_company: Option<String>,
+    invoice_id: Option<i64>,
+    invoice_paid_on: Option<String>,
 }
 
 impl SaleRow {
@@ -45,6 +52,13 @@ impl SaleRow {
             pickup_number: self.pickup_number,
             cash_given_cents: self.cash_given_cents,
             change_cents: self.change_cents,
+            vat_rate_percent: self.vat_rate_percent,
+            vat_cents: self.vat_cents,
+            customer_order_id: self.customer_order_id,
+            customer_name: self.customer_name,
+            customer_company: self.customer_company,
+            invoice_id: self.invoice_id,
+            invoice_paid_on: self.invoice_paid_on,
         })
     }
 }
@@ -57,6 +71,10 @@ struct SaleListRow {
     payment_method: String,
     total_cents: i64,
     pickup_number: Option<String>,
+    customer_name: Option<String>,
+    customer_company: Option<String>,
+    invoice_id: Option<i64>,
+    invoice_paid_on: Option<String>,
 }
 
 impl SaleListRow {
@@ -68,9 +86,22 @@ impl SaleListRow {
             payment_method: PaymentMethod::from_str(&self.payment_method)?,
             total_cents: self.total_cents,
             pickup_number: self.pickup_number,
+            customer_name: self.customer_name,
+            customer_company: self.customer_company,
+            invoice_id: self.invoice_id,
+            invoice_paid_on: self.invoice_paid_on,
         })
     }
 }
+
+/// Customer and invoice of sales that completed a customer order.
+const SALE_ORDER_JOINS: &str = "
+    LEFT JOIN customer_order ON customer_order.sale_id = sale.id
+    LEFT JOIN customer ON customer.id = customer_order.customer_id
+    LEFT JOIN invoice ON invoice.sale_id = sale.id";
+
+pub const CUSTOMER_NAME_SQL: &str =
+    "CASE WHEN customer.id IS NULL THEN NULL ELSE customer.first_name || ' ' || customer.last_name END";
 
 pub struct SaleRepository;
 
@@ -83,10 +114,19 @@ impl SaleRepository {
     /// same transaction.
     pub async fn create(pool: &SqlitePool, prepared: &PreparedSale) -> Result<SaleWithItems, AppError> {
         let mut tx = pool.begin().await?;
+        let sale_id = Self::create_in(&mut tx, prepared).await?;
+        tx.commit().await?;
 
+        Self::find_with_items(pool, sale_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Verkauf {sale_id} nach dem Anlegen nicht gefunden")))
+    }
+
+    /// Like `create`, inside the caller's transaction; returns the sale id.
+    pub async fn create_in(tx: &mut Transaction<'_, Sqlite>, prepared: &PreparedSale) -> Result<i64, AppError> {
         let sale_id = sqlx::query(
-            "INSERT INTO sale (payment_method, status, subtotal_cents, discount_cents, discount_percent, discount_kind, discount_cumulative, total_cents, pickup_number, cash_given_cents, change_cents)
-             VALUES (?, 'Completed', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO sale (payment_method, status, subtotal_cents, discount_cents, discount_percent, discount_kind, discount_cumulative, total_cents, pickup_number, cash_given_cents, change_cents, vat_rate_percent, vat_cents)
+             VALUES (?, 'Completed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(prepared.payment_method.as_str())
         .bind(prepared.subtotal_cents)
@@ -98,15 +138,17 @@ impl SaleRepository {
         .bind(&prepared.pickup_number)
         .bind(prepared.cash_given_cents)
         .bind(prepared.change_cents)
-        .execute(&mut *tx)
+        .bind(prepared.vat_rate_percent)
+        .bind(prepared.vat_cents)
+        .execute(&mut **tx)
         .await?
         .last_insert_rowid();
 
         for item in &prepared.items {
             sqlx::query(
                 "INSERT INTO sale_item (sale_id, article_id, quantity, list_price_cents, unit_price_cents, article_discount_percent,
-                                        line_discount_kind, line_discount_value, discount_cents)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                        line_discount_kind, line_discount_value, discount_cents, note)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             )
             .bind(sale_id)
             .bind(item.article_id)
@@ -117,40 +159,44 @@ impl SaleRepository {
             .bind(item.line_discount_kind)
             .bind(item.line_discount_value)
             .bind(item.discount_cents)
-            .execute(&mut *tx)
+            .bind(&item.note)
+            .execute(&mut **tx)
             .await?;
 
             sqlx::query("UPDATE article SET stock = MAX(stock - ?, 0), updated_at = CURRENT_TIMESTAMP WHERE id = ?")
                 .bind(item.quantity)
                 .bind(item.article_id)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
         }
 
         if let Some(open_sale_id) = &prepared.open_sale_id {
-            OpenSaleRepository::delete_in(&mut tx, open_sale_id).await?;
+            OpenSaleRepository::delete_in(tx, open_sale_id).await?;
         }
 
-        tx.commit().await?;
-
-        Self::find_with_items(pool, sale_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Verkauf {sale_id} nach dem Anlegen nicht gefunden")))
+        Ok(sale_id)
     }
 
     /// Sales and returns in the date range, newest first. Each return is its
     /// own entry on the day it was booked, with the refund as a negative
     /// total, like the revenue statistics count it.
     pub async fn list(pool: &SqlitePool, from: &str, to: &str) -> Result<Vec<SaleListEntry>, AppError> {
-        let rows = sqlx::query_as::<_, SaleListRow>(
-            "SELECT id as sale_id, NULL as return_id, timestamp, payment_method, total_cents, pickup_number
-             FROM sale WHERE date(timestamp) BETWEEN ?1 AND ?2
+        let rows = sqlx::query_as::<_, SaleListRow>(&format!(
+            "SELECT sale.id as sale_id, NULL as return_id, sale.timestamp as timestamp, sale.payment_method as payment_method,
+                    sale.total_cents as total_cents, sale.pickup_number as pickup_number,
+                    {CUSTOMER_NAME_SQL} as customer_name, customer.company as customer_company,
+                    invoice.id as invoice_id, invoice.paid_on as invoice_paid_on
+             FROM sale {SALE_ORDER_JOINS}
+             WHERE date(sale.timestamp) BETWEEN ?1 AND ?2
              UNION ALL
-             SELECT sale_id, id as return_id, timestamp, refund_method as payment_method, -total_refund_cents as total_cents,
-                    NULL as pickup_number
-             FROM sale_return WHERE date(timestamp) BETWEEN ?1 AND ?2
-             ORDER BY timestamp DESC, return_id DESC",
-        )
+             SELECT sale_return.sale_id, sale_return.id, sale_return.timestamp, sale_return.refund_method,
+                    -sale_return.total_refund_cents, NULL, {CUSTOMER_NAME_SQL}, customer.company, NULL, NULL
+             FROM sale_return
+             LEFT JOIN customer_order ON customer_order.sale_id = sale_return.sale_id
+             LEFT JOIN customer ON customer.id = customer_order.customer_id
+             WHERE date(sale_return.timestamp) BETWEEN ?1 AND ?2
+             ORDER BY timestamp DESC, return_id DESC"
+        ))
         .bind(from)
         .bind(to)
         .fetch_all(pool)
@@ -168,10 +214,19 @@ impl SaleRepository {
     }
 
     async fn find_sale(pool: &SqlitePool, id: i64) -> Result<Option<Sale>, AppError> {
-        let row = sqlx::query_as::<_, SaleRow>(
-            "SELECT id, timestamp, payment_method, status, subtotal_cents, discount_cents, discount_percent, discount_kind, discount_cumulative, total_cents, pickup_number, cash_given_cents, change_cents
-             FROM sale WHERE id = ?",
-        )
+        let row = sqlx::query_as::<_, SaleRow>(&format!(
+            "SELECT sale.id as id, sale.timestamp as timestamp, sale.payment_method as payment_method, sale.status as status,
+                    sale.subtotal_cents as subtotal_cents, sale.discount_cents as discount_cents,
+                    sale.discount_percent as discount_percent, sale.discount_kind as discount_kind,
+                    sale.discount_cumulative as discount_cumulative, sale.total_cents as total_cents,
+                    sale.pickup_number as pickup_number, sale.cash_given_cents as cash_given_cents,
+                    sale.change_cents as change_cents, sale.vat_rate_percent as vat_rate_percent,
+                    sale.vat_cents as vat_cents, customer_order.id as customer_order_id,
+                    {CUSTOMER_NAME_SQL} as customer_name, customer.company as customer_company,
+                    invoice.id as invoice_id, invoice.paid_on as invoice_paid_on
+             FROM sale {SALE_ORDER_JOINS}
+             WHERE sale.id = ?"
+        ))
         .bind(id)
         .fetch_optional(pool)
         .await?;
@@ -188,9 +243,10 @@ impl SaleRepository {
                     sale_item.line_discount_kind as line_discount_kind,
                     sale_item.line_discount_value as line_discount_value,
                     (sale_item.quantity * sale_item.unit_price_cents) as line_total_cents,
-                    sale_item.discount_cents as discount_cents
+                    sale_item.discount_cents as discount_cents, sale_item.note as note
              FROM sale_item JOIN article ON sale_item.article_id = article.id
-             WHERE sale_item.sale_id = ?",
+             WHERE sale_item.sale_id = ?
+             ORDER BY sale_item.id",
         )
         .bind(sale_id)
         .fetch_all(pool)

@@ -2,7 +2,7 @@
 
 A lightweight point-of-sale desktop app for small shops, built with Tauri, React and SQLite.
 
-Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded to 5 Rappen, and it supports cash, TWINT and card payments. It runs fully offline and keeps all data in a local SQLite database.
+Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded to 5 Rappen, and it supports cash, TWINT and card payments as well as invoices with a QR payment part. It runs fully offline and keeps all data in a local SQLite database.
 
 > **Note:** The user interface is currently available in German only.
 
@@ -10,8 +10,10 @@ Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded 
 
 - **Checkout:** add articles with a barcode/QR scanner or by search. Supports per-line and whole-sale discounts, works out the change for cash payments by note and coin, and prints receipts in A4 or A5.
 - **Open sales:** leave a started sale open and serve another customer in between. Articles in open sales are reserved, and stock is deducted only when the sale is completed.
+- **Customers and orders:** take orders for customers in advance, with a note per line (e.g. the name to print) and a production status (open, material to order, material ordered, ready for production, produced, delivered). Prices are fixed when a line is added. An order is completed at the checkout (cash, TWINT, card; also via **Auftrag abrechnen** in the checkout) or, when paid by invoice, by issuing an invoice. Stock is deducted when the order is completed; orders don't reserve stock.
+- **Invoices:** a Swiss QR-bill on A4 with the QR payment part (QR reference for a QR-IBAN, creditor reference otherwise). The PDF is created once when the invoice is issued and stored in the database, so it can be opened or saved unchanged at any time later. Invoices are marked as paid in the invoice view; the sales list shows whether they are open or paid.
 - **Articles:** product groups and subgroups, an internal number (also printed on receipts), finishings that can be attached to other articles, promotions and stock levels.
-- **Sales history:** every completed sale, with full or partial returns. A return is listed as its own entry with a negative total and the receipt number `R-<sale number>`, so the list adds up to the net revenue.
+- **Sales history:** every completed sale, including completed orders with their customer and invoice, with full or partial returns. A return is listed as its own entry with a negative total and the receipt number `R-<receipt number>`, so the list adds up to the net revenue. Receipt numbers have five digits (e.g. `00042`). Returns are refunded in cash, by TWINT, card or bank transfer.
 - **Labels:** print QR code labels on configurable label sheets.
 - **Statistics:** revenue by day, product group and article.
 - **Settings:** company details and logo for receipts, backup and restore, a test mode with a separate database, and light and dark themes.
@@ -19,7 +21,7 @@ Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded 
 
 ## Getting started
 
-On first launch, open **Einstellungen → Firma** (Settings → Company). Enter your company name, address, VAT number and logo. These details are printed on receipts and stored in the database; the source code contains no company data.
+On first launch, open **Einstellungen → Firma** (Settings → Company). Enter your company name, address, VAT number and logo. These details are printed on receipts and stored in the database; the source code contains no company data. Prices are always entered including VAT: set the VAT rate there too, and receipts and invoices show the VAT contained in the total. A changed rate applies to sales and orders completed from then on; existing receipts and invoices keep theirs. For invoices, also enter the IBAN (or QR-IBAN) and the payment term, and write postal code and city as "8000 Zürich": the QR payment part needs them separately.
 
 The database is stored in `%APPDATA%\ch.swen-loeffler.tinysales\` by default. You can choose a different location in the settings.
 
@@ -51,7 +53,7 @@ Migrations live in `src-tauri/migrations` and are applied automatically on start
 
 Rules for new migrations, so updates never break existing data:
 
-- **Never edit a released migration.** sqlx refuses to start on a database whose recorded checksum differs, which would lock users out after the update. Add a new migration instead. The test `released_migrations_are_unchanged` enforces this: when releasing, add each new migration and its checksum to `RELEASED_MIGRATIONS` in `src-tauri/src/db.rs`.
+- **Never edit a released migration.** sqlx refuses to start on a database whose recorded checksum differs, which would lock users out after the update. Add a new migration instead. The test `released_migrations_are_unchanged` enforces this without a list to maintain: it compares the migrations with every release tag (`v*`), so a migration counts as released as soon as the tag of its release exists. The test needs git and the tags (CI checks out with `fetch-depth: 0`).
 - **Prefer additive changes:** new tables, new indexes, `ALTER TABLE … ADD COLUMN` with a `DEFAULT` (or nullable). Existing rows must stay valid.
 - **Rebuilding a table** (SQLite can't drop constraints or change column types in place): foreign keys are enforced, so `DROP TABLE` deletes dependent rows through `ON DELETE CASCADE` (e.g. `open_sale` → `open_sale_item`). Start such a migration with `-- no-transaction`, then run `PRAGMA foreign_keys = OFF; BEGIN; …create new table, copy, drop, rename…; PRAGMA foreign_key_check; COMMIT; PRAGMA foreign_keys = ON;`.
 - The test `data_of_the_first_release_survives_all_migrations` fills a database of the first release with data and checks that no rows are lost through all migrations. When a migration transforms data, extend it with a check for that.
@@ -79,17 +81,16 @@ CI (`.github/workflows/ci.yml`) runs for pushes to `feature/*`, `hotfix/*` and `
 Publishing a release:
 
 1. On `develop`, raise the version with `npm run version:patch`, `version:minor` or `version:major`. It updates `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`.
-2. If the release contains new migrations, add them to `RELEASED_MIGRATIONS` (see above). From now on they must not change.
-3. Push and merge `develop` into `main` (pull request).
-4. Tag the merge commit on `main` and push the tag:
+2. Push and merge `develop` into `main` (pull request).
+3. Tag the merge commit on `main` and push the tag. From then on, the migrations of this release must not change (see above):
    ```sh
    git checkout main && git pull
    git tag v0.2.0 && git push origin v0.2.0
    ```
-5. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
-6. Nothing to merge back: `.github/workflows/sync-develop.yml` moves `develop` forward to `main` after every merge into `main`, so the next pull request into `main` is up to date. If `develop` got commits of its own in the meantime, that workflow fails and `main` has to be merged into `develop` by hand (`git checkout develop && git pull && git merge main && git push`).
+4. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
+5. Nothing to merge back: `.github/workflows/sync-develop.yml` moves `develop` forward to `main` after every merge into `main`, so the next pull request into `main` is up to date. If `develop` got commits of its own in the meantime, that workflow fails and `main` has to be merged into `develop` by hand (`git checkout develop && git pull && git merge main && git push`).
 
-Hotfixes start with `git checkout -b hotfix/0.2.1 main`, bump the patch version, and are merged into `main`. If `develop` has moved on since the last release, merge `main` into `develop` by hand afterwards (see step 6).
+Hotfixes start with `git checkout -b hotfix/0.2.1 main`, bump the patch version, and are merged into `main`. If `develop` has moved on since the last release, merge `main` into `develop` by hand afterwards (see step 5).
 
 Local release builds (`npm run tauri build`) also sign the updater artifacts, so set `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment first.
 

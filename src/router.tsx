@@ -4,9 +4,14 @@ import { AppShell } from "./components/templates/AppShell";
 import { useDatabaseErrorQuery } from "./hooks/useSettings";
 import { ArticlePage } from "./pages/ArticlePage";
 import { CheckoutPage } from "./pages/CheckoutPage";
+import { CustomersPage } from "./pages/CustomersPage";
 import { DatabaseErrorPage } from "./pages/DatabaseErrorPage";
+import { InvoicePage } from "./pages/InvoicePage";
 import { LabelsPage } from "./pages/LabelsPage";
 import { LabelTemplatesPage } from "./pages/LabelTemplatesPage";
+import { OrderCheckoutPage } from "./pages/OrderCheckoutPage";
+import { OrderPage } from "./pages/OrderPage";
+import { OrdersPage } from "./pages/OrdersPage";
 import { ProductGroupsPage } from "./pages/ProductGroupsPage";
 import { ProductSubgroupsPage } from "./pages/ProductSubgroupsPage";
 import { SalesPage } from "./pages/SalesPage";
@@ -40,6 +45,37 @@ const checkoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: CheckoutPage,
+});
+
+const ordersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/orders",
+  component: OrdersPage,
+});
+
+/** `orderId` is "new" for a new order. */
+const orderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/orders/$orderId",
+  component: OrderPage,
+});
+
+const orderCheckoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/orders/$orderId/checkout",
+  component: OrderCheckoutPage,
+});
+
+const invoiceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invoices/$invoiceId",
+  component: InvoicePage,
+});
+
+const customersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/customers",
+  component: CustomersPage,
 });
 
 const articleRoute = createRoute({
@@ -92,6 +128,11 @@ const settingsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   checkoutRoute,
+  ordersRoute,
+  orderRoute,
+  orderCheckoutRoute,
+  invoiceRoute,
+  customersRoute,
   articleRoute,
   productGroupsRoute,
   productSubgroupsRoute,

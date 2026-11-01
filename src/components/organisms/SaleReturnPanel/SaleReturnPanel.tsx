@@ -8,8 +8,14 @@ import { formatArticleCode } from "../../../lib/articleCode";
 import { formatChf } from "../../../lib/money/change";
 import { refundCents } from "../../../lib/money/discount";
 import { parseNumericInput } from "../../../lib/utils";
-import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from "../../../types/sale";
-import type { NewSaleReturnItem, PaymentMethod, SaleReturnWithItems, SaleWithItems } from "../../../types/sale";
+import { PAYMENT_METHOD_LABELS, paidAtCheckout, REFUND_METHODS } from "../../../types/sale";
+import type {
+  NewSaleReturnItem,
+  PaymentMethod,
+  SaleItemDetail,
+  SaleReturnWithItems,
+  SaleWithItems,
+} from "../../../types/sale";
 
 export interface SaleReturnPanelProps {
   sale: SaleWithItems;
@@ -25,7 +31,31 @@ function formatTimestamp(timestamp: string): string {
   return date.toLocaleString("de-CH", { dateStyle: "medium", timeStyle: "short" });
 }
 
-const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map((m) => ({ value: m, label: PAYMENT_METHOD_LABELS[m] }));
+/**
+ * Lines of a customer order can repeat an article, e.g. with different
+ * notes. Returns are booked per article, so its lines are combined (as in
+ * SaleReturnService).
+ */
+function linesPerArticle(items: SaleItemDetail[]): SaleItemDetail[] {
+  const lines = new Map<number, SaleItemDetail>();
+  for (const item of items) {
+    const line = lines.get(item.articleId);
+    lines.set(
+      item.articleId,
+      line
+        ? {
+            ...line,
+            quantity: line.quantity + item.quantity,
+            lineTotalCents: line.lineTotalCents + item.lineTotalCents,
+            discountCents: line.discountCents + item.discountCents,
+          }
+        : item,
+    );
+  }
+  return [...lines.values()];
+}
+
+const PAYMENT_METHOD_OPTIONS = REFUND_METHODS.map((m) => ({ value: m, label: PAYMENT_METHOD_LABELS[m] }));
 
 export function SaleReturnPanel({ sale, existingReturns, submitting, errorMessage, onSubmit }: SaleReturnPanelProps) {
   const alreadyReturned = useMemo(() => {
@@ -39,9 +69,12 @@ export function SaleReturnPanel({ sale, existingReturns, submitting, errorMessag
   }, [existingReturns]);
 
   const [returnQuantities, setReturnQuantities] = useState<Record<number, number>>({});
-  const [refundMethod, setRefundMethod] = useState<PaymentMethod>(sale.sale.paymentMethod);
+  // Refunded the way it was paid; an invoice by default back to the account.
+  const [refundMethod, setRefundMethod] = useState<PaymentMethod>(
+    paidAtCheckout(sale.sale.paymentMethod) ? sale.sale.paymentMethod : "BankTransfer",
+  );
 
-  const rows = sale.items.map((item) => {
+  const rows = linesPerArticle(sale.items).map((item) => {
     const already = alreadyReturned.get(item.articleId) ?? 0;
     const remaining = item.quantity - already;
     return { item, already, remaining };
@@ -84,8 +117,7 @@ export function SaleReturnPanel({ sale, existingReturns, submitting, errorMessag
   const fullyReturned = rows.every((row) => row.remaining === 0);
 
   return (
-    <div className="settings-section sale-return-panel">
-      <h2>Verkauf #{sale.sale.id}</h2>
+    <div className="sale-return-panel">
       <p className="muted">
         {formatTimestamp(sale.sale.timestamp)} · bezahlt mit {PAYMENT_METHOD_LABELS[sale.sale.paymentMethod]}
       </p>

@@ -1,5 +1,8 @@
 pub mod article;
 pub mod company_profile;
+pub mod customer;
+pub mod customer_order;
+pub mod invoice;
 pub mod label_template;
 pub mod open_sale;
 pub mod product_group;

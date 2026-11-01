@@ -7,7 +7,9 @@ use crate::error::AppError;
 use super::model::{OpenSale, SaveOpenSale};
 use super::repository::OpenSaleRepository;
 
-const LINE_DISCOUNT_KINDS: [&str; 3] = ["none", "percent", "price"];
+// "price" (a new unit price) may still be stored in sales opened before
+// line discounts became amounts off; the checkout converts it.
+const LINE_DISCOUNT_KINDS: [&str; 4] = ["none", "percent", "amount", "price"];
 const SALE_DISCOUNT_KINDS: [&str; 3] = ["none", "percent", "total"];
 
 /// Open (not yet completed) sales. Only their shape is validated here: the
