@@ -10,7 +10,7 @@ use super::service::ProductGroupService;
 /// the service, translates nothing itself (no business logic here).
 #[tauri::command]
 pub async fn list_product_groups(state: State<'_, AppState>) -> Result<Vec<ProductGroup>, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductGroupService::list(&pool).await
 }
 
@@ -19,7 +19,7 @@ pub async fn create_product_group(
     state: State<'_, AppState>,
     input: NewProductGroup,
 ) -> Result<ProductGroup, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductGroupService::create(&pool, input).await
 }
 
@@ -28,12 +28,12 @@ pub async fn update_product_group(
     state: State<'_, AppState>,
     input: UpdateProductGroup,
 ) -> Result<ProductGroup, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductGroupService::update(&pool, input).await
 }
 
 #[tauri::command]
 pub async fn deactivate_product_group(state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductGroupService::deactivate(&pool, id).await
 }

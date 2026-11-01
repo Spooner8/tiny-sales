@@ -1,8 +1,10 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 
 import { AppShell } from "./components/templates/AppShell";
+import { useDatabaseErrorQuery } from "./hooks/useSettings";
 import { ArticlePage } from "./pages/ArticlePage";
 import { CheckoutPage } from "./pages/CheckoutPage";
+import { DatabaseErrorPage } from "./pages/DatabaseErrorPage";
 import { LabelsPage } from "./pages/LabelsPage";
 import { LabelTemplatesPage } from "./pages/LabelTemplatesPage";
 import { ProductGroupsPage } from "./pages/ProductGroupsPage";
@@ -11,13 +13,28 @@ import { SalesPage } from "./pages/SalesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { StatisticsPage } from "./pages/StatisticsPage";
 
-const rootRoute = createRootRoute({
-  component: () => (
+/**
+ * Every page needs the database. If it couldn't be opened at startup, only
+ * the error page is shown, until an update or another database fixes it.
+ */
+function RootLayout() {
+  const { data: databaseError, isPending } = useDatabaseErrorQuery();
+  if (isPending) return null;
+  if (databaseError) {
+    return (
+      <div className="app-frame">
+        <DatabaseErrorPage error={databaseError} />
+      </div>
+    );
+  }
+  return (
     <AppShell>
       <Outlet />
     </AppShell>
-  ),
-});
+  );
+}
+
+const rootRoute = createRootRoute({ component: RootLayout });
 
 const checkoutRoute = createRoute({
   getParentRoute: () => rootRoute,

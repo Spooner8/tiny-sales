@@ -8,19 +8,19 @@ use super::service::SaleService;
 
 #[tauri::command]
 pub async fn create_sale(state: State<'_, AppState>, input: NewSale) -> Result<SaleWithItems, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     SaleService::create(&pool, input).await
 }
 
 #[tauri::command]
 pub async fn list_sales(state: State<'_, AppState>, from: String, to: String) -> Result<Vec<SaleListEntry>, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     SaleService::list(&pool, &from, &to).await
 }
 
 #[tauri::command]
 pub async fn get_sale(state: State<'_, AppState>, id: i64) -> Result<SaleWithItems, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     SaleService::get(&pool, id).await
 }
 
@@ -30,7 +30,7 @@ pub async fn get_revenue_by_day(
     from: String,
     to: String,
 ) -> Result<Vec<DailyRevenue>, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     SaleService::revenue_by_day(&pool, &from, &to).await
 }
 
@@ -40,7 +40,7 @@ pub async fn get_revenue_by_product_group(
     from: String,
     to: String,
 ) -> Result<Vec<ProductGroupRevenue>, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     SaleService::revenue_by_product_group(&pool, &from, &to).await
 }
 
@@ -50,6 +50,6 @@ pub async fn get_revenue_by_article(
     from: String,
     to: String,
 ) -> Result<Vec<ArticleRevenue>, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     SaleService::revenue_by_article(&pool, &from, &to).await
 }

@@ -47,7 +47,7 @@ cargo test
 
 ### Database migrations
 
-Migrations live in `src-tauri/migrations` and are applied automatically on startup, each in its own transaction. Before an existing database is migrated, a copy is written next to it (`tiny-sales-before-update-<timestamp>.db`). A database that was already migrated by a newer version of the app is refused rather than used. If the database can't be opened at startup, the app shows the reason instead of quitting silently.
+Migrations live in `src-tauri/migrations` and are applied automatically on startup, each in its own transaction. Before an existing database is migrated, a copy is written next to it (`tiny-sales-before-update-<timestamp>.db`). A database that was already migrated by a newer version of the app is refused rather than used. If the database can't be opened at startup, the app shows the reason instead of its pages and offers what can fix it: installing an update (e.g. when another computer already migrated the shared database), trying again (e.g. once the NAS is reachable), or opening or creating another database.
 
 Rules for new migrations, so updates never break existing data:
 

@@ -1575,6 +1575,18 @@
   max-width: none;
 }
 
+/* Shown instead of the app when the database couldn't be opened. */
+.database-error-page {
+  max-width: 780px;
+  margin: 24px auto 0;
+}
+
+.database-error-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
 .label-config-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
