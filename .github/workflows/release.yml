@@ -49,10 +49,9 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+      # No tests here: everything on main was tested on develop or its
+      # hotfix branch before it could be merged.
       - run: npm ci
-
-      - name: Test backend
-        run: cargo test --manifest-path src-tauri/Cargo.toml
 
       - uses: tauri-apps/tauri-action@v0
         env:

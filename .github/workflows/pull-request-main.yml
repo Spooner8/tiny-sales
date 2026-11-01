@@ -1,0 +1,23 @@
+name: Pull request into main
+
+# Gitflow: main only takes develop (a release) and hotfix branches. Rulesets
+# can't restrict the source branch, so this check is required on main.
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the source branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          case "$HEAD_REF" in
+            develop | hotfix/*) echo "$HEAD_REF may be merged into main" ;;
+            *)
+              echo "::error::Only develop and hotfix/* may be merged into main, not $HEAD_REF"
+              exit 1
+              ;;
+          esac
