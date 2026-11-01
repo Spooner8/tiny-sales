@@ -8,7 +8,7 @@ use super::service::ProductSubgroupService;
 
 #[tauri::command]
 pub async fn list_product_subgroups(state: State<'_, AppState>) -> Result<Vec<ProductSubgroup>, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductSubgroupService::list(&pool).await
 }
 
@@ -17,7 +17,7 @@ pub async fn create_product_subgroup(
     state: State<'_, AppState>,
     input: NewProductSubgroup,
 ) -> Result<ProductSubgroup, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductSubgroupService::create(&pool, input).await
 }
 
@@ -26,12 +26,12 @@ pub async fn update_product_subgroup(
     state: State<'_, AppState>,
     input: UpdateProductSubgroup,
 ) -> Result<ProductSubgroup, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductSubgroupService::update(&pool, input).await
 }
 
 #[tauri::command]
 pub async fn deactivate_product_subgroup(state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     ProductSubgroupService::deactivate(&pool, id).await
 }

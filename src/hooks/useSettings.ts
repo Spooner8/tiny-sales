@@ -7,6 +7,19 @@ export function useDbPathQuery() {
   return useQuery({ queryKey: ["settings", "dbPath"], queryFn: settingsApi.getDbPath });
 }
 
+/** Why the database couldn't be opened at startup; `null` while one is open. */
+export function useDatabaseErrorQuery() {
+  return useQuery({ queryKey: ["database", "error"], queryFn: settingsApi.getDatabaseError });
+}
+
+export function useRetryDatabase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => settingsApi.retryDatabase(),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+}
+
 // Switching the database makes every cached query stale, not just the path.
 export function useOpenDatabase() {
   const queryClient = useQueryClient();

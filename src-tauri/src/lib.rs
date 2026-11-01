@@ -25,10 +25,9 @@ pub fn run() {
                 let db_path = config::active_db_path(&app_handle, &cfg)
                     .expect("could not determine db path");
 
-                let pool = match db::connect_and_migrate(&db_path).await {
-                    Ok(pool) => pool,
-                    Err(err) => exit_with_database_error(&db_path, &err),
-                };
+                // Without a database the window still opens and shows why,
+                // so an update or another database can be chosen there.
+                let pool = db::connect_and_migrate(&db_path).await.map_err(|err| err.to_string());
 
                 cfg.db_path = Some(prod_path.to_string_lossy().to_string());
                 let _ = config::save_config(&app_handle, &cfg);
@@ -45,6 +44,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             features::settings::commands::get_db_path,
+            features::settings::commands::get_database_error,
+            features::settings::commands::retry_database,
             features::settings::commands::open_database,
             features::settings::commands::create_database,
             features::settings::commands::backup_database,
@@ -85,25 +86,4 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-/// Without a database the app can't do anything. Instead of vanishing (a
-/// panic aborts silently in release builds), say why, e.g. after an update
-/// whose schema migration failed. No window exists yet, so the dialog is
-/// shown directly.
-fn exit_with_database_error(db_path: &std::path::Path, err: &error::AppError) -> ! {
-    rfd::MessageDialog::new()
-        .set_level(rfd::MessageLevel::Error)
-        .set_title("Tiny Sales – Datenbank kann nicht geöffnet werden")
-        .set_description(format!(
-            "{err}
-
-Datenbank: {}
-
-Wurde die Datenbank bei einem Update umgestellt, liegt der Stand davor als Sicherung im selben Ordner (…-before-update-….db).",
-            db_path.display()
-        ))
-        .set_buttons(rfd::MessageButtons::Ok)
-        .show();
-    std::process::exit(1);
 }

@@ -12,6 +12,24 @@ pub async fn get_db_path(state: State<'_, AppState>) -> Result<String, AppError>
     Ok(state.db_path.lock().await.clone())
 }
 
+/// Why the database couldn't be opened at startup; `None` while one is open.
+#[tauri::command]
+pub async fn get_database_error(state: State<'_, AppState>) -> Result<Option<String>, AppError> {
+    Ok(state.pool.lock().await.as_ref().err().cloned())
+}
+
+/// Opens the configured database again, e.g. once the NAS it lives on is
+/// reachable again after it couldn't be opened at startup.
+#[tauri::command]
+pub async fn retry_database(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
+    let cfg = config::load_config(&app)?;
+    let path = config::active_db_path(&app, &cfg)?;
+    let new_pool = db::connect_and_migrate(&path).await?;
+    state.replace_pool(new_pool).await;
+    *state.db_path.lock().await = path.to_string_lossy().to_string();
+    Ok(())
+}
+
 /// Switches the production database to an existing file (e.g. an older
 /// copy). The file is used as-is - never created or overwritten.
 #[tauri::command]
@@ -54,8 +72,7 @@ async fn switch_production_database(
     new_pool: SqlitePool,
     path: String,
 ) -> Result<(), AppError> {
-    let old_pool = std::mem::replace(&mut *state.pool.lock().await, new_pool);
-    old_pool.close().await;
+    state.replace_pool(new_pool).await;
     *state.db_path.lock().await = path.clone();
 
     let mut cfg = config::load_config(app)?;
@@ -87,8 +104,7 @@ pub async fn set_test_mode(
     let new_path = config::active_db_path(&app, &cfg)?;
     let new_pool = db::connect_and_migrate(&new_path).await?;
 
-    let old_pool = std::mem::replace(&mut *state.pool.lock().await, new_pool);
-    old_pool.close().await;
+    state.replace_pool(new_pool).await;
     *state.db_path.lock().await = new_path.to_string_lossy().to_string();
     *test_mode = enabled;
 
@@ -97,7 +113,7 @@ pub async fn set_test_mode(
 
 #[tauri::command]
 pub async fn backup_database(state: State<'_, AppState>, destination: String) -> Result<(), AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     sqlx::query("VACUUM INTO ?")
         .bind(destination)
         .execute(&*pool)
@@ -121,7 +137,7 @@ pub async fn restore_database(state: State<'_, AppState>, source: String) -> Res
     db::validate_app_database_file(&source_path).await?;
 
     // Held for the whole swap so no other command runs against a closed pool.
-    let mut pool = state.pool.lock().await;
+    let mut pool = state.pool().await?;
 
     let safety_copy = db::backup_path_beside(&pool, &db_path, "before-restore").await?;
     sqlx::query("VACUUM INTO ?")

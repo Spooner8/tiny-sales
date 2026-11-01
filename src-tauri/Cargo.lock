@@ -4726,7 +4726,6 @@ dependencies = [
 name = "tiny-sales"
 version = "0.1.1"
 dependencies = [
- "rfd",
  "serde",
  "serde_json",
  "sqlx",

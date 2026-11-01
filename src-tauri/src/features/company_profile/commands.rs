@@ -8,7 +8,7 @@ use super::service::CompanyProfileService;
 
 #[tauri::command]
 pub async fn get_company_profile(state: State<'_, AppState>) -> Result<CompanyProfile, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     CompanyProfileService::get(&pool).await
 }
 
@@ -17,6 +17,6 @@ pub async fn save_company_profile(
     state: State<'_, AppState>,
     input: CompanyProfile,
 ) -> Result<CompanyProfile, AppError> {
-    let pool = state.pool.lock().await;
+    let pool = state.pool().await?;
     CompanyProfileService::save(&pool, input).await
 }
