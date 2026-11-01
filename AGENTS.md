@@ -7,7 +7,7 @@ Instructions for AI coding agents working on Tiny Sales. The [README](README.md)
 Tiny Sales is an offline point-of-sale desktop app for small Swiss shops: Tauri 2 (Rust) backend with SQLite (sqlx), React 19 + TypeScript frontend. Windows only (NSIS installer), self-updating from GitHub releases. Public repository: `Spooner8/tiny-sales`, Apache-2.0.
 
 - Current version: see `version` in `package.json` (kept identical in `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`).
-- Released tags so far: `v0.1.0`, `v0.1.1`. Released migrations: `0001_initial_schema.sql`.
+- Released versions are the `v*` tags (`git tag --list "v*"`); a migration is released once it is contained in one of them.
 - The production database may live on a NAS and be shared by several computers running the app.
 
 ## Commands
@@ -50,7 +50,7 @@ Every new command must be registered in `generate_handler!` in `src-tauri/src/li
 
 Read the "Database migrations" section of the README before touching the schema. In short:
 
-- Never edit a migration that is listed in `RELEASED_MIGRATIONS` (`src-tauri/src/db.rs`). Add a new one.
+- Never edit, rename or delete a migration contained in a release tag (`v*`). Add a new one. The test `released_migrations_are_unchanged` checks this against the tags.
 - Prefer additive changes (new tables/indexes, `ADD COLUMN` with `DEFAULT` or nullable).
 - Table rebuilds need `-- no-transaction` and the `PRAGMA foreign_keys` sequence from the README, otherwise `ON DELETE CASCADE` deletes data.
 - When a migration transforms data, extend the test `data_of_the_first_release_survives_all_migrations`.
@@ -112,7 +112,7 @@ Workflows (`.github/workflows`):
 
 ### Release and hotfix (for reference - the maintainer runs these)
 
-Release: on `develop`, bump the version (`npm run version:patch|minor|major`, as decided by the maintainer), add new migrations to `RELEASED_MIGRATIONS`, PR `develop` → `main`, tag the merge commit on `main` (`vX.Y.Z`), publish the draft release.
+Release: on `develop`, bump the version (`npm run version:patch|minor|major`, as decided by the maintainer), PR `develop` → `main`, tag the merge commit on `main` (`vX.Y.Z`), publish the draft release.
 
 Hotfix: `git checkout -b hotfix/X.Y.Z main`, fix, bump the patch version, PR into `main`, tag, publish. Afterwards make sure `develop` contains `main` (sync workflow or manual merge).
 

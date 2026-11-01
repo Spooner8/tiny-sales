@@ -51,7 +51,7 @@ Migrations live in `src-tauri/migrations` and are applied automatically on start
 
 Rules for new migrations, so updates never break existing data:
 
-- **Never edit a released migration.** sqlx refuses to start on a database whose recorded checksum differs, which would lock users out after the update. Add a new migration instead. The test `released_migrations_are_unchanged` enforces this: when releasing, add each new migration and its checksum to `RELEASED_MIGRATIONS` in `src-tauri/src/db.rs`.
+- **Never edit a released migration.** sqlx refuses to start on a database whose recorded checksum differs, which would lock users out after the update. Add a new migration instead. The test `released_migrations_are_unchanged` enforces this without a list to maintain: it compares the migrations with every release tag (`v*`), so a migration counts as released as soon as the tag of its release exists. The test needs git and the tags (CI checks out with `fetch-depth: 0`).
 - **Prefer additive changes:** new tables, new indexes, `ALTER TABLE … ADD COLUMN` with a `DEFAULT` (or nullable). Existing rows must stay valid.
 - **Rebuilding a table** (SQLite can't drop constraints or change column types in place): foreign keys are enforced, so `DROP TABLE` deletes dependent rows through `ON DELETE CASCADE` (e.g. `open_sale` → `open_sale_item`). Start such a migration with `-- no-transaction`, then run `PRAGMA foreign_keys = OFF; BEGIN; …create new table, copy, drop, rename…; PRAGMA foreign_key_check; COMMIT; PRAGMA foreign_keys = ON;`.
 - The test `data_of_the_first_release_survives_all_migrations` fills a database of the first release with data and checks that no rows are lost through all migrations. When a migration transforms data, extend it with a check for that.
@@ -79,17 +79,16 @@ CI (`.github/workflows/ci.yml`) runs for pushes to `feature/*`, `hotfix/*` and `
 Publishing a release:
 
 1. On `develop`, raise the version with `npm run version:patch`, `version:minor` or `version:major`. It updates `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`.
-2. If the release contains new migrations, add them to `RELEASED_MIGRATIONS` (see above). From now on they must not change.
-3. Push and merge `develop` into `main` (pull request).
-4. Tag the merge commit on `main` and push the tag:
+2. Push and merge `develop` into `main` (pull request).
+3. Tag the merge commit on `main` and push the tag. From then on, the migrations of this release must not change (see above):
    ```sh
    git checkout main && git pull
    git tag v0.2.0 && git push origin v0.2.0
    ```
-5. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
-6. Nothing to merge back: `.github/workflows/sync-develop.yml` moves `develop` forward to `main` after every merge into `main`, so the next pull request into `main` is up to date. If `develop` got commits of its own in the meantime, that workflow fails and `main` has to be merged into `develop` by hand (`git checkout develop && git pull && git merge main && git push`).
+4. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
+5. Nothing to merge back: `.github/workflows/sync-develop.yml` moves `develop` forward to `main` after every merge into `main`, so the next pull request into `main` is up to date. If `develop` got commits of its own in the meantime, that workflow fails and `main` has to be merged into `develop` by hand (`git checkout develop && git pull && git merge main && git push`).
 
-Hotfixes start with `git checkout -b hotfix/0.2.1 main`, bump the patch version, and are merged into `main`. If `develop` has moved on since the last release, merge `main` into `develop` by hand afterwards (see step 6).
+Hotfixes start with `git checkout -b hotfix/0.2.1 main`, bump the patch version, and are merged into `main`. If `develop` has moved on since the last release, merge `main` into `develop` by hand afterwards (see step 5).
 
 Local release builds (`npm run tauri build`) also sign the updater artifacts, so set `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment first.
 

@@ -23,6 +23,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The release tags tell the tests which migrations were released.
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: lts/*
