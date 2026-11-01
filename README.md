@@ -72,23 +72,24 @@ One-time setup:
 
 ### Branches
 
-The project uses Gitflow: `main` holds released versions only, `develop` is the integration branch. Work happens on `feature/*` branches off `develop`, releases are prepared on `release/*` and urgent fixes for a released version on `hotfix/*` (both merged into `main` and back into `develop`). CI runs for pushes to `main` and `develop` and for every pull request.
+The project uses Gitflow: `main` holds released versions only, `develop` is the integration branch. Work happens on `feature/*` branches off `develop`, urgent fixes for a released version on `hotfix/*` branches off `main`. Only `develop` and `hotfix/*` may be merged into `main` (checked by `.github/workflows/pull-request-main.yml`).
+
+CI (`.github/workflows/ci.yml`) runs for pushes to `feature/*`, `hotfix/*` and `develop`. A pull request shows the run of its last commit. Merging a pull request and pull requests into `main` run no tests again, because their commits were tested on their branch.
 
 Publishing a release:
 
-1. Create the release branch: `git checkout -b release/0.2.0 develop`.
-2. Set the new version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, and run `cargo check` in `src-tauri` to update `Cargo.lock`.
-3. If the release contains new migrations, add them to `RELEASED_MIGRATIONS` (see above). From now on they must not change.
-4. Commit, push and merge the release branch into `main` (pull request).
-5. Tag the merge commit on `main` and push the tag:
+1. On `develop`, raise the version with `npm run version:patch`, `version:minor` or `version:major`. It updates `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`.
+2. If the release contains new migrations, add them to `RELEASED_MIGRATIONS` (see above). From now on they must not change.
+3. Push and merge `develop` into `main` (pull request).
+4. Tag the merge commit on `main` and push the tag:
    ```sh
    git checkout main && git pull
    git tag v0.2.0 && git push origin v0.2.0
    ```
-6. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, runs the tests, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
-7. Merge `main` back into `develop`, so the version bump and `RELEASED_MIGRATIONS` are there too.
+5. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
+6. Merge `main` back into `develop` (`git checkout develop && git merge main && git push`), so both share the release commit.
 
-Hotfixes work the same way, starting with `git checkout -b hotfix/0.2.1 main`.
+Hotfixes start with `git checkout -b hotfix/0.2.1 main`, bump the patch version, and are merged into `main` and then back into `develop`.
 
 Local release builds (`npm run tauri build`) also sign the updater artifacts, so set `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment first.
 

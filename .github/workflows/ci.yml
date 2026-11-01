@@ -1,12 +1,25 @@
 name: CI
 
+# Tests where new code arrives: feature and hotfix branches and direct pushes
+# to develop. A pull request shows the run of its last commit, so it isn't
+# tested a second time. Merge commits of pull requests (a feature into
+# develop, main back into develop after a release) and develop into main
+# bring nothing untested, so they run nothing.
 on:
   push:
-    branches: [main, develop]
-  pull_request:
+    branches: [develop, "feature/**", "hotfix/**"]
+
+# A new push to the same branch replaces a run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    # Skipped jobs count as passed for required checks.
+    if: >-
+      !startsWith(github.event.head_commit.message, 'Merge pull request #') &&
+      !startsWith(github.event.head_commit.message, 'Merge branch ''main''')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
