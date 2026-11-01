@@ -9,6 +9,11 @@ export async function invokeCommand<T>(command: string, args?: Record<string, un
   try {
     return await invoke<T>(command, args);
   } catch (err) {
-    throw new Error(typeof err === "string" ? err : String(err));
+    throw toError(err);
   }
+}
+
+/** Plugins reject with plain strings as well, e.g. the updater. */
+export function toError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(typeof err === "string" ? err : String(err));
 }
