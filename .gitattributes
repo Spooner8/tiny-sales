@@ -1,0 +1,4 @@
+# sqlx stores a checksum of each migration's bytes in the database. Other
+# line endings (e.g. a CRLF checkout on Windows) would change it and lock
+# existing databases out, so migrations are always checked out with LF.
+*.sql text eol=lf

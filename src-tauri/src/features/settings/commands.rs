@@ -123,7 +123,7 @@ pub async fn restore_database(state: State<'_, AppState>, source: String) -> Res
     // Held for the whole swap so no other command runs against a closed pool.
     let mut pool = state.pool.lock().await;
 
-    let safety_copy = safety_copy_path(&pool, &db_path).await?;
+    let safety_copy = db::backup_path_beside(&pool, &db_path, "before-restore").await?;
     sqlx::query("VACUUM INTO ?")
         .bind(safety_copy.to_string_lossy().to_string())
         .execute(&*pool)
@@ -152,19 +152,6 @@ fn is_same_file(a: &Path, b: &Path) -> bool {
         (Ok(a), Ok(b)) => a == b,
         _ => false,
     }
-}
-
-/// e.g. `tiny-sales-before-restore-20261031-153012.db` next to `tiny-sales.db`.
-async fn safety_copy_path(pool: &SqlitePool, db_path: &Path) -> Result<PathBuf, AppError> {
-    let timestamp: String = sqlx::query_scalar("SELECT strftime('%Y%m%d-%H%M%S', 'now', 'localtime')")
-        .fetch_one(pool)
-        .await?;
-    let stem = db_path
-        .file_stem()
-        .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| "database".into());
-    let file_name = format!("{stem}-before-restore-{timestamp}.db");
-    Ok(db_path.with_file_name(file_name))
 }
 
 #[tauri::command]
