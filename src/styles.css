@@ -1412,7 +1412,19 @@
 }
 
 .sale-return-panel {
-  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sale-return-panel p {
+  margin: 0;
+}
+
+.sale-return-panel h2 {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .sales-table-refund {
@@ -1672,5 +1684,502 @@
   .label-cell.label-cell-skipped {
     border-color: transparent;
     background: none;
+  }
+}
+
+/* ---- Customer orders ---- */
+
+.order-meta {
+  margin: -8px 0 16px;
+}
+
+.order-completed {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 780px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+  font-size: 14px;
+}
+
+.order-completed a,
+.sale-order-links a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.order-section-title {
+  margin: 24px 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.order-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.order-settings .form-field {
+  width: 260px;
+}
+
+.order-summary {
+  margin-top: 20px;
+}
+
+.order-items-table .order-items-note {
+  min-width: 220px;
+}
+
+.order-status-select {
+  min-width: 220px;
+}
+
+.customer-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 780px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.customer-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.receipt-item-note {
+  display: block;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.sale-order-links {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+/* ---- Invoice ---- */
+
+.invoice-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.invoice-controls-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.invoice-controls a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+/* Paper, laid out in millimetres as printed: white with dark text in dark
+   mode too, like the receipt. */
+.invoice-document {
+  --invoice-ink: oklch(0.2 0 0);
+  --invoice-muted: oklch(0.45 0 0);
+  --invoice-rule: oklch(0.85 0 0);
+  color: var(--invoice-ink);
+  font-size: 10pt;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Each page is one A4 sheet; InvoiceDocument decides what goes on it. */
+.invoice-page {
+  position: relative;
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto 24px;
+  padding: 15mm 20mm;
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.invoice-page + .invoice-page {
+  break-before: page;
+}
+
+/* The hidden copy the pages are measured from: as wide as a page's content. */
+.invoice-measure {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  width: 170mm;
+  visibility: hidden;
+}
+
+/* Keeps the margins of its content inside, so measured heights include them. */
+.invoice-block {
+  display: flow-root;
+}
+
+.invoice-document p {
+  margin: 0 0 3mm;
+}
+
+.invoice-continuation {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4mm;
+  padding-bottom: 1.5mm;
+  border-bottom: 0.5pt solid var(--invoice-rule);
+  font-size: 8pt;
+  color: var(--invoice-muted);
+}
+
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10mm;
+}
+
+/* A fixed height, so the page is laid out the same before the logo loads. */
+.invoice-logo {
+  width: auto;
+  height: 25mm;
+  max-width: 60mm;
+  object-fit: contain;
+  object-position: left top;
+}
+
+.invoice-company {
+  display: flex;
+  flex-direction: column;
+  font-style: normal;
+  text-align: right;
+  font-size: 9pt;
+  color: var(--invoice-muted);
+}
+
+.invoice-company strong {
+  color: var(--invoice-ink);
+  font-size: 10pt;
+}
+
+/* In the window of a C5/C6 envelope with the window on the right. */
+.invoice-recipient {
+  display: flex;
+  flex-direction: column;
+  min-height: 30mm;
+  margin: 10mm 0 0 98mm;
+  font-style: normal;
+}
+
+.invoice-sender-line {
+  margin-bottom: 2mm;
+  padding-bottom: 1mm;
+  border-bottom: 0.5pt solid var(--invoice-rule);
+  font-size: 7pt;
+  color: var(--invoice-muted);
+}
+
+.invoice-title {
+  margin: 8mm 0 3mm;
+  font-size: 16pt;
+  font-weight: 700;
+}
+
+.invoice-meta {
+  display: grid;
+  grid-template-columns: 35mm auto;
+  row-gap: 0.5mm;
+  margin: 0 0 6mm;
+}
+
+.invoice-meta dt {
+  color: var(--invoice-muted);
+}
+
+.invoice-meta dd,
+.invoice-totals dd {
+  margin: 0;
+}
+
+.invoice-items {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 3mm 0;
+}
+
+.invoice-col-position {
+  width: 11mm;
+}
+
+.invoice-col-quantity {
+  width: 16mm;
+}
+
+.invoice-col-price {
+  width: 24mm;
+}
+
+.invoice-col-amount {
+  width: 28mm;
+}
+
+.invoice-items th {
+  padding: 1.5mm 1mm;
+  text-align: left;
+  font-size: 8pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--invoice-muted);
+  border-bottom: 0.75pt solid var(--invoice-ink);
+}
+
+.invoice-items td {
+  padding: 2mm 1mm;
+  vertical-align: top;
+  border-bottom: 0.5pt solid var(--invoice-rule);
+  overflow-wrap: anywhere;
+}
+
+.invoice-items tr {
+  break-inside: avoid;
+}
+
+.invoice-items .invoice-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.invoice-item-name {
+  display: block;
+  font-weight: 600;
+}
+
+.invoice-item-detail {
+  display: block;
+  font-size: 8.5pt;
+  color: var(--invoice-muted);
+}
+
+.invoice-totals {
+  display: grid;
+  grid-template-columns: 1fr 35mm;
+  row-gap: 1mm;
+  margin: 0 0 6mm;
+  text-align: right;
+}
+
+.invoice-totals .invoice-grand-total {
+  padding-top: 1.5mm;
+  border-top: 0.75pt solid var(--invoice-ink);
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+/* The VAT contained in the total, below it and smaller. */
+.receipt-totals .receipt-vat,
+.invoice-totals .invoice-vat {
+  font-size: 0.85em;
+  color: var(--receipt-muted, var(--invoice-muted));
+}
+
+.invoice-closing {
+  display: flex;
+  flex-direction: column;
+}
+
+/* QR-bill payment part, sizes and fonts after the SIX style guide:
+   receipt 62 mm, payment part 148 mm, 105 mm high, QR code 46 mm. */
+.qr-bill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  width: 210mm;
+  height: 105mm;
+  border-top: 0.75pt dashed black;
+  color: black;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.15;
+}
+
+.qr-bill::before {
+  content: "✂";
+  position: absolute;
+  top: -2.6mm;
+  left: 8mm;
+  padding: 0 1mm;
+  background: white;
+  font-size: 9pt;
+  line-height: 1;
+}
+
+.qr-bill h3 {
+  margin: 3mm 0 0;
+  font-weight: 700;
+}
+
+.qr-bill-title {
+  margin: 0 0 3mm;
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.qr-bill-receipt {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 62mm;
+  height: 105mm;
+  padding: 5mm;
+  border-right: 0.75pt dashed black;
+}
+
+.qr-bill-receipt h3 {
+  font-size: 6pt;
+}
+
+.qr-bill-receipt span {
+  font-size: 8pt;
+}
+
+.qr-bill-receipt-info,
+.qr-bill-payment-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.qr-bill-receipt-info {
+  height: 56mm;
+}
+
+.qr-bill-receipt-info > h3:first-child,
+.qr-bill-payment-info > h3:first-child,
+.qr-bill-amount h3 {
+  margin-top: 0;
+}
+
+.qr-bill-amount {
+  display: flex;
+  gap: 5mm;
+}
+
+.qr-bill-amount > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
+}
+
+.qr-bill-receipt .qr-bill-amount {
+  height: 14mm;
+}
+
+.qr-bill-acceptance {
+  margin-top: auto;
+  text-align: right;
+  font-size: 6pt;
+  font-weight: 700;
+}
+
+.qr-bill-payment {
+  box-sizing: border-box;
+  display: flex;
+  gap: 5mm;
+  width: 148mm;
+  height: 105mm;
+  padding: 5mm;
+}
+
+.qr-bill-payment h3 {
+  font-size: 8pt;
+}
+
+.qr-bill-payment span {
+  font-size: 10pt;
+}
+
+.qr-bill-payment-left {
+  display: flex;
+  flex-direction: column;
+  width: 46mm;
+}
+
+.qr-bill-code {
+  width: 46mm;
+  height: 46mm;
+  margin-bottom: 5mm;
+}
+
+.qr-bill-payment-info {
+  flex: 1;
+}
+
+.qr-bill-blank-receipt-debtor {
+  width: 52mm;
+  height: 20mm;
+}
+
+.qr-bill-blank-receipt-amount {
+  width: 30mm;
+  height: 10mm;
+}
+
+.qr-bill-blank-payment-amount {
+  width: 40mm;
+  height: 15mm;
+}
+
+.qr-bill-blank-payment-debtor {
+  width: 65mm;
+  height: 25mm;
+}
+
+@media print {
+  /* Documents of several pages (invoices, label sheets) must not be cut
+     off at the height of the window. */
+  .app-frame {
+    height: auto;
+  }
+
+  .app-shell,
+  .app-content {
+    display: block;
+    overflow: visible;
+  }
+
+  /* PDFs are printed with backgrounds, which must not tint the paper. */
+  html,
+  body,
+  .app-frame,
+  .app-content {
+    background: white !important;
+  }
+
+  .invoice-page {
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    /* One sheet, a hair less so rounding can't add an empty page. */
+    height: 296.5mm;
   }
 }

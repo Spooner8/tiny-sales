@@ -2,7 +2,7 @@
 
 A lightweight point-of-sale desktop app for small shops, built with Tauri, React and SQLite.
 
-Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded to 5 Rappen, and it supports cash, TWINT and card payments. It runs fully offline and keeps all data in a local SQLite database.
+Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded to 5 Rappen, and it supports cash, TWINT and card payments as well as invoices with a QR payment part. It runs fully offline and keeps all data in a local SQLite database.
 
 > **Note:** The user interface is currently available in German only.
 
@@ -10,8 +10,10 @@ Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded 
 
 - **Checkout:** add articles with a barcode/QR scanner or by search. Supports per-line and whole-sale discounts, works out the change for cash payments by note and coin, and prints receipts in A4 or A5.
 - **Open sales:** leave a started sale open and serve another customer in between. Articles in open sales are reserved, and stock is deducted only when the sale is completed.
+- **Customers and orders:** take orders for customers in advance, with a note per line (e.g. the name to print) and a production status (open, material to order, material ordered, ready for production, produced, delivered). Prices are fixed when a line is added. An order is completed at the checkout (cash, TWINT, card; also via **Auftrag abrechnen** in the checkout) or, when paid by invoice, by issuing an invoice. Stock is deducted when the order is completed; orders don't reserve stock.
+- **Invoices:** a Swiss QR-bill on A4 with the QR payment part (QR reference for a QR-IBAN, creditor reference otherwise). The PDF is created once when the invoice is issued and stored in the database, so it can be opened or saved unchanged at any time later. Invoices are marked as paid in the invoice view; the sales list shows whether they are open or paid.
 - **Articles:** product groups and subgroups, an internal number (also printed on receipts), finishings that can be attached to other articles, promotions and stock levels.
-- **Sales history:** every completed sale, with full or partial returns. A return is listed as its own entry with a negative total and the receipt number `R-<sale number>`, so the list adds up to the net revenue.
+- **Sales history:** every completed sale, including completed orders with their customer and invoice, with full or partial returns. A return is listed as its own entry with a negative total and the receipt number `R-<receipt number>`, so the list adds up to the net revenue. Receipt numbers have five digits (e.g. `00042`). Returns are refunded in cash, by TWINT, card or bank transfer.
 - **Labels:** print QR code labels on configurable label sheets.
 - **Statistics:** revenue by day, product group and article.
 - **Settings:** company details and logo for receipts, backup and restore, a test mode with a separate database, and light and dark themes.
@@ -19,7 +21,7 @@ Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded 
 
 ## Getting started
 
-On first launch, open **Einstellungen → Firma** (Settings → Company). Enter your company name, address, VAT number and logo. These details are printed on receipts and stored in the database; the source code contains no company data.
+On first launch, open **Einstellungen → Firma** (Settings → Company). Enter your company name, address, VAT number and logo. These details are printed on receipts and stored in the database; the source code contains no company data. Prices are always entered including VAT: set the VAT rate there too, and receipts and invoices show the VAT contained in the total. A changed rate applies to sales and orders completed from then on; existing receipts and invoices keep theirs. For invoices, also enter the IBAN (or QR-IBAN) and the payment term, and write postal code and city as "8000 Zürich": the QR payment part needs them separately.
 
 The database is stored in `%APPDATA%\ch.swen-loeffler.tinysales\` by default. You can choose a different location in the settings.
 

@@ -3,6 +3,7 @@ mod db;
 mod error;
 mod features;
 mod money;
+mod pdf;
 mod state;
 
 use tauri::Manager;
@@ -83,6 +84,21 @@ pub fn run() {
             features::label_template::commands::create_label_template,
             features::label_template::commands::update_label_template,
             features::label_template::commands::deactivate_label_template,
+            features::customer::commands::list_customers,
+            features::customer::commands::create_customer,
+            features::customer::commands::update_customer,
+            features::customer::commands::deactivate_customer,
+            features::customer_order::commands::list_customer_orders,
+            features::customer_order::commands::get_customer_order,
+            features::customer_order::commands::save_customer_order,
+            features::customer_order::commands::set_customer_order_status,
+            features::customer_order::commands::delete_customer_order,
+            features::customer_order::commands::complete_customer_order,
+            features::invoice::commands::get_invoice,
+            features::invoice::commands::store_invoice_pdf,
+            features::invoice::commands::open_invoice_pdf,
+            features::invoice::commands::save_invoice_pdf,
+            features::invoice::commands::set_invoice_paid_on,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

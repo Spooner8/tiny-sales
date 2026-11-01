@@ -4,11 +4,11 @@ import { Button } from "../../atoms/Button";
 import { Input } from "../../atoms/Input";
 import { Select } from "../../atoms/Select";
 import { FormField } from "../../molecules/FormField";
-import { Checkbox } from "../../ui/checkbox";
+import { SaleDiscountFields } from "../../molecules/SaleDiscountFields";
 import { breakDownChange, DENOMINATIONS, formatChf } from "../../../lib/money/change";
 import { formatPercent, parseSaleDiscount, saleDiscountCents } from "../../../lib/money/discount";
 import type { DiscountableLine, SaleDiscountDraft } from "../../../lib/money/discount";
-import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from "../../../types/sale";
+import { CHECKOUT_PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from "../../../types/sale";
 import type { PaymentMethod, SaleDiscount } from "../../../types/sale";
 
 export interface PaymentConfirmDetails {
@@ -24,25 +24,22 @@ export interface PaymentPanelProps {
   /** Sale discount and pickup number are kept with the open sale. */
   discountDraft: SaleDiscountDraft;
   onDiscountDraftChange: (draft: SaleDiscountDraft) => void;
-  pickupNumber: string;
-  onPickupNumberChange: (pickupNumber: string) => void;
+  /** Without these, there is no pickup number field (e.g. for orders). */
+  pickupNumber?: string;
+  onPickupNumberChange?: (pickupNumber: string) => void;
+  /** Defaults to everything paid at the checkout. */
+  paymentMethods?: readonly PaymentMethod[];
+  initialPaymentMethod?: PaymentMethod;
+  confirmLabel?: string;
+  /** Without onCancel there is no cancel button, e.g. when completing an order. */
+  cancelLabel?: string;
   /** Prevents completing the sale, e.g. while a line discount is invalid. */
   blocked?: boolean;
   submitting?: boolean;
   errorMessage?: string | null;
   onConfirm: (details: PaymentConfirmDetails) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }
-
-const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map((m) => ({ value: m, label: PAYMENT_METHOD_LABELS[m] }));
-
-type DiscountKind = SaleDiscountDraft["kind"];
-
-const DISCOUNT_KIND_OPTIONS: { value: DiscountKind; label: string }[] = [
-  { value: "none", label: "Kein Rabatt" },
-  { value: "percent", label: "Prozent (%)" },
-  { value: "total", label: "Neuer Endbetrag (CHF)" },
-];
 
 function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2);
@@ -62,6 +59,10 @@ export function PaymentPanel({
   onDiscountDraftChange,
   pickupNumber,
   onPickupNumberChange,
+  paymentMethods = CHECKOUT_PAYMENT_METHODS,
+  initialPaymentMethod = "Cash",
+  confirmLabel = "Verkauf abschliessen",
+  cancelLabel = "Verkauf abbrechen",
   blocked,
   submitting,
   errorMessage,
@@ -70,12 +71,11 @@ export function PaymentPanel({
 }: PaymentPanelProps) {
   const subtotalCents = lines.reduce((sum, line) => sum + line.lineTotalCents, 0);
   const hasDiscountedLines = lines.some((line) => line.discounted);
-  const { kind: discountKind, input: discountInput, cumulative } = discountDraft;
   const { discount, error: discountError } = parseSaleDiscount(discountDraft, subtotalCents);
   const discountCents = saleDiscountCents(lines, discount);
   const totalCents = subtotalCents - discountCents;
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initialPaymentMethod);
   // The amount field is the single source of truth for the cash given;
   // denomination buttons add to it, the counts only label the buttons.
   const [cashInput, setCashInput] = useState("");
@@ -108,57 +108,20 @@ export function PaymentPanel({
     onConfirm({
       paymentMethod,
       cashGivenCents: paymentMethod === "Cash" ? tenderedCents : null,
-      pickupNumber: pickupNumber.trim() ? pickupNumber.trim() : null,
+      pickupNumber: pickupNumber?.trim() ? pickupNumber.trim() : null,
       discount,
     });
   }
 
   return (
     <div className="payment-panel">
-      <div className="discount-row">
-        <FormField label="Rabatt" htmlFor="discount-kind">
-          <Select
-            id="discount-kind"
-            value={discountKind}
-            onValueChange={(value) =>
-              onDiscountDraftChange({ kind: value as DiscountKind, input: "", cumulative: false })
-            }
-            options={DISCOUNT_KIND_OPTIONS}
-          />
-        </FormField>
-        {discountKind !== "none" && (
-          <FormField
-            label={discountKind === "percent" ? "Rabatt in %" : "Neuer Endbetrag (CHF)"}
-            htmlFor="discount-value"
-            error={discountError}
-          >
-            <Input
-              id="discount-value"
-              type="text"
-              inputMode="decimal"
-              value={discountInput}
-              onChange={(e) => onDiscountDraftChange({ ...discountDraft, input: e.target.value })}
-              placeholder={discountKind === "percent" ? "z.B. 10" : formatChf(subtotalCents)}
-              autoFocus
-            />
-          </FormField>
-        )}
-      </div>
-
-      {discountKind === "percent" && hasDiscountedLines && (
-        <div className="form-field form-field-row">
-          <Checkbox id="discount-cumulative" checked={cumulative} onCheckedChange={(checked) => onDiscountDraftChange({ ...discountDraft, cumulative: checked })} />
-          <label htmlFor="discount-cumulative">
-            Mit Aktionen und Positionsrabatten kumulieren
-            <span className="muted">
-              {" "}
-              {cumulative
-                ? "(gilt auch für bereits rabattierte Positionen)"
-                : "(bereits rabattierte Positionen erhalten keinen Gesamtrabatt)"}
-            </span>
-          </label>
-        </div>
-      )}
+      <SaleDiscountFields
+        draft={discountDraft}
+        onChange={onDiscountDraftChange}
+        subtotalCents={subtotalCents}
+        hasDiscountedLines={hasDiscountedLines}
+        error={discountError}
+      />
 
       <dl className="payment-summary">
         {discountCents > 0 && (
@@ -182,7 +145,7 @@ export function PaymentPanel({
               setPaymentMethod(value as PaymentMethod);
               resetDenominations();
             }}
-            options={PAYMENT_METHOD_OPTIONS}
+            options={paymentMethods.map((m) => ({ value: m, label: PAYMENT_METHOD_LABELS[m] }))}
           />
         </FormField>
       </div>
@@ -244,24 +207,28 @@ export function PaymentPanel({
         </div>
       )}
 
-      <FormField label="Abholnummer (optional)" htmlFor="pickup-number">
-        <Input
-          id="pickup-number"
-          value={pickupNumber}
-          onChange={(e) => onPickupNumberChange(e.target.value)}
-          placeholder="z.B. 42"
-        />
-      </FormField>
+      {onPickupNumberChange && (
+        <FormField label="Abholnummer (optional)" htmlFor="pickup-number">
+          <Input
+            id="pickup-number"
+            value={pickupNumber ?? ""}
+            onChange={(e) => onPickupNumberChange(e.target.value)}
+            placeholder="z.B. 42"
+          />
+        </FormField>
+      )}
 
       {errorMessage && <p className="field-error">{errorMessage}</p>}
 
       <div className="form-actions">
         <Button type="button" disabled={submitting || blocked || cashInsufficient || discountError !== null} onClick={handleConfirm}>
-          Verkauf abschliessen
+          {confirmLabel}
         </Button>
-        <Button type="button" variant="secondary" disabled={submitting} onClick={onCancel}>
-          Verkauf abbrechen
-        </Button>
+        {onCancel && (
+          <Button type="button" variant="secondary" disabled={submitting} onClick={onCancel}>
+            {cancelLabel}
+          </Button>
+        )}
       </div>
     </div>
   );

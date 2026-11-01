@@ -50,6 +50,21 @@ export function initTheme() {
   });
 }
 
+/**
+ * Shows the light theme while `task` runs, for printing without the print
+ * dialog (e.g. to PDF), which doesn't fire `beforeprint`.
+ */
+export async function withPrintTheme<T>(task: () => Promise<T>): Promise<T> {
+  printing = true;
+  apply();
+  try {
+    return await task();
+  } finally {
+    printing = false;
+    apply();
+  }
+}
+
 export function getThemePreference(): ThemePreference {
   return preference;
 }

@@ -2,6 +2,8 @@ use sqlx::SqlitePool;
 
 use crate::error::AppError;
 
+use crate::features::invoice::qr_bill;
+
 use super::model::CompanyProfile;
 use super::repository::CompanyProfileRepository;
 
@@ -17,6 +19,16 @@ impl CompanyProfileService {
     }
 
     pub async fn save(pool: &SqlitePool, input: CompanyProfile) -> Result<CompanyProfile, AppError> {
+        let iban = qr_bill::normalize_iban(&input.iban);
+        if !iban.is_empty() {
+            qr_bill::validate_iban(&iban)?;
+        }
+        if !(0..=365).contains(&input.invoice_payment_days) {
+            return Err(AppError::Validation("Zahlungsfrist muss zwischen 0 und 365 Tagen liegen".into()));
+        }
+        if !(0.0..=100.0).contains(&input.vat_rate_percent) {
+            return Err(AppError::Validation("MWST-Satz muss zwischen 0 und 100 % liegen".into()));
+        }
         let profile = CompanyProfile {
             name: input.name.trim().to_string(),
             street: input.street.trim().to_string(),
@@ -28,6 +40,9 @@ impl CompanyProfileService {
             receipt_signature: input.receipt_signature.trim().to_string(),
             logo: Self::validate_image(input.logo, "Logo")?,
             logo_mark: Self::validate_image(input.logo_mark, "Logo-Symbol")?,
+            iban: qr_bill::format_iban(&iban),
+            invoice_payment_days: input.invoice_payment_days,
+            vat_rate_percent: input.vat_rate_percent,
         };
         CompanyProfileRepository::save(pool, &profile).await?;
         Ok(profile)
