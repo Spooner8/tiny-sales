@@ -188,6 +188,25 @@
   gap: 8px;
 }
 
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.update-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .app-nav {
   display: flex;
   flex-direction: column;

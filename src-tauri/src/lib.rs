@@ -14,6 +14,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let app_handle = app.handle().clone();
             let state = tauri::async_runtime::block_on(async move {
@@ -23,9 +25,10 @@ pub fn run() {
                 let db_path = config::active_db_path(&app_handle, &cfg)
                     .expect("could not determine db path");
 
-                let pool = db::connect_and_migrate(&db_path)
-                    .await
-                    .expect("database could not be opened/migrated");
+                let pool = match db::connect_and_migrate(&db_path).await {
+                    Ok(pool) => pool,
+                    Err(err) => exit_with_database_error(&db_path, &err),
+                };
 
                 cfg.db_path = Some(prod_path.to_string_lossy().to_string());
                 let _ = config::save_config(&app_handle, &cfg);
@@ -82,4 +85,25 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Without a database the app can't do anything. Instead of vanishing (a
+/// panic aborts silently in release builds), say why, e.g. after an update
+/// whose schema migration failed. No window exists yet, so the dialog is
+/// shown directly.
+fn exit_with_database_error(db_path: &std::path::Path, err: &error::AppError) -> ! {
+    rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_title("Tiny Sales – Datenbank kann nicht geöffnet werden")
+        .set_description(format!(
+            "{err}
+
+Datenbank: {}
+
+Wurde die Datenbank bei einem Update umgestellt, liegt der Stand davor als Sicherung im selben Ordner (…-before-update-….db).",
+            db_path.display()
+        ))
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show();
+    std::process::exit(1);
 }

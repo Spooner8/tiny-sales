@@ -25,7 +25,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -33,5 +34,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ4NEIyNUM3QjUzMTZBMUYKUldRZmFqRzF4eVZMMkpab3I4bitQZm84aXV2VlNCc1ZRcWxvT3V2YnRFcFRWRkF6ZGRJbWJzZDEK",
+      "endpoints": [
+        "https://github.com/Spooner8/tiny-sales/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

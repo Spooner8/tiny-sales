@@ -18,10 +18,12 @@ import {
   useSetTestMode,
   useTestModeQuery,
 } from "../hooks/useSettings";
+import { useAppVersionQuery, useInstallUpdate, useUpdateCheckQuery } from "../hooks/useAppUpdate";
 import { useCompanyProfileQuery, useSaveCompanyProfile } from "../hooks/useCompanyProfile";
 import { useTheme } from "../hooks/useTheme";
 import { confirmAction } from "../lib/confirm";
 import { THEME_LABELS, THEME_PREFERENCES } from "../lib/theme";
+import { confirmUpdate, installLabel } from "../lib/update";
 import type { ThemePreference } from "../lib/theme";
 import { RECEIPT_PAPER_SIZES } from "../types/settings";
 import type { ReceiptPaperSize } from "../types/settings";
@@ -44,6 +46,16 @@ export function SettingsPage() {
   const saveCompanyProfile = useSaveCompanyProfile();
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+
+  const { data: appVersion } = useAppVersionQuery();
+  const updateCheck = useUpdateCheckQuery();
+  const update = updateCheck.data;
+  const installUpdate = useInstallUpdate();
+
+  async function handleInstallUpdate() {
+    if (!update || !(await confirmUpdate(update.version))) return;
+    installUpdate.mutate(update);
+  }
 
   // An open dialog: picking an existing file never asks to overwrite it.
   async function handleOpenDatabase() {
@@ -201,6 +213,38 @@ werden durch den Inhalt des Backups ersetzt.
         {restoreMessage && <p>{restoreMessage}</p>}
         {backupDatabase.error && <p className="field-error">{backupDatabase.error.message}</p>}
         {restoreDatabase.error && <p className="field-error">{restoreDatabase.error.message}</p>}
+      </div>
+
+      <div className="settings-section">
+        <h2>Updates</h2>
+        <p>
+          Installierte Version: <strong>{appVersion ?? "..."}</strong>
+        </p>
+        <p className="muted">
+          Beim Start wird automatisch nach einer neuen Version gesucht. Vor dem ersten Start einer neuen Version, die
+          die Datenbank umstellt, wird neben der Datenbank eine Sicherung angelegt (…-before-update-….db).
+        </p>
+        <div className="form-actions">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => updateCheck.refetch()}
+            disabled={updateCheck.isFetching || installUpdate.isPending}
+          >
+            {updateCheck.isFetching ? "Suche läuft..." : "Nach Updates suchen"}
+          </Button>
+          {update && (
+            <Button type="button" onClick={handleInstallUpdate} disabled={installUpdate.isPending}>
+              {installLabel(installUpdate.isPending, installUpdate.progress)}
+            </Button>
+          )}
+        </div>
+        {!updateCheck.isFetching && updateCheck.error && (
+          <p className="field-error">Suche fehlgeschlagen: {updateCheck.error.message}</p>
+        )}
+        {!updateCheck.isFetching && updateCheck.isSuccess && !update && <p>Tiny Sales ist auf dem neuesten Stand.</p>}
+        {update && <p>Version {update.version} ist verfügbar.</p>}
+        {installUpdate.error && <p className="field-error">Update fehlgeschlagen: {installUpdate.error.message}</p>}
       </div>
 
       <div className="settings-section">
