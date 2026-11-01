@@ -87,9 +87,9 @@ Publishing a release:
    git tag v0.2.0 && git push origin v0.2.0
    ```
 5. The workflow `.github/workflows/release.yml` checks that the tag is on `main` and matches the version, builds and signs the installer, and creates a draft release with `latest.json`. Check the draft and publish it. Only then do installed apps see the update.
-6. Merge `main` back into `develop` (`git checkout develop && git merge main && git push`), so both share the release commit.
+6. Nothing to merge back: `.github/workflows/sync-develop.yml` moves `develop` forward to `main` after every merge into `main`, so the next pull request into `main` is up to date. If `develop` got commits of its own in the meantime, that workflow fails and `main` has to be merged into `develop` by hand (`git checkout develop && git pull && git merge main && git push`).
 
-Hotfixes start with `git checkout -b hotfix/0.2.1 main`, bump the patch version, and are merged into `main` and then back into `develop`.
+Hotfixes start with `git checkout -b hotfix/0.2.1 main`, bump the patch version, and are merged into `main`. If `develop` has moved on since the last release, merge `main` into `develop` by hand afterwards (see step 6).
 
 Local release builds (`npm run tauri build`) also sign the updater artifacts, so set `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment first.
 

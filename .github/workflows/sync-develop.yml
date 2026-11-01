@@ -1,0 +1,33 @@
+name: Sync develop
+
+# Gitflow: after a merge into main (a release or a hotfix), develop has to
+# contain main's merge commit, or the next pull request into main is out of
+# date. This moves develop forward to main when that is a fast-forward. If
+# develop has commits of its own by then, it fails and main has to be merged
+# into develop by hand. Pushes with GITHUB_TOKEN start no other workflows,
+# so CI doesn't run for it.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fast-forward:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Fast-forward develop to main
+        run: |
+          if git merge-base --is-ancestor origin/main origin/develop; then
+            echo "develop already contains main"
+          elif git merge-base --is-ancestor origin/develop origin/main; then
+            git push origin origin/main:refs/heads/develop
+            echo "develop moved forward to $(git rev-parse --short origin/main)"
+          else
+            echo "::error::develop has commits that main doesn't have. Merge main into develop by hand: git checkout develop && git pull && git merge main && git push"
+            exit 1
+          fi
