@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Button } from "../../atoms/Button";
 import { FilterableTable } from "../FilterableTable";
 import { formatChf } from "../../../lib/money/change";
+import { customerLabel } from "../../../types/customer";
 import { PAYMENT_METHOD_LABELS, receiptNumber } from "../../../types/sale";
 import type { SaleListEntry } from "../../../types/sale";
 
@@ -19,6 +20,13 @@ export interface SalesTableProps {
 }
 
 const columnHelper = createColumnHelper<SaleListEntry>();
+
+/** "Rechnung (offen)" until an invoice is paid. */
+function paymentLabel(entry: SaleListEntry): string {
+  const label = PAYMENT_METHOD_LABELS[entry.paymentMethod];
+  if (entry.invoiceId === null) return label;
+  return `${label} (${entry.invoicePaidOn ? "bezahlt" : "offen"})`;
+}
 
 function formatTimestamp(timestamp: string): string {
   const date = new Date(timestamp.replace(" ", "T") + "Z");
@@ -46,7 +54,13 @@ export function SalesTable({ entries, selectedId, onSelect, toolbar }: SalesTabl
       header: "Beleg-Nr.",
       meta: { searchable: true, filterable: true },
     }),
-    columnHelper.accessor((sale) => PAYMENT_METHOD_LABELS[sale.paymentMethod], {
+    columnHelper.accessor((sale) => (sale.customerName ? customerLabel(sale.customerName, sale.customerCompany) : ""), {
+      id: "customer",
+      header: "Kunde",
+      cell: ({ getValue }) => getValue() || "–",
+      meta: { searchable: true, filterable: true },
+    }),
+    columnHelper.accessor(paymentLabel, {
       id: "paymentMethod",
       header: "Zahlart",
       meta: { searchable: true, filterable: true },
@@ -84,7 +98,7 @@ export function SalesTable({ entries, selectedId, onSelect, toolbar }: SalesTabl
     <FilterableTable
       data={entries}
       columns={columns}
-      searchPlaceholder="Verkäufe suchen (Datum, Beleg-Nr., Summe, Abholnummer...)"
+      searchPlaceholder="Verkäufe suchen (Datum, Beleg-Nr., Kunde, Summe, Abholnummer...)"
       toolbar={toolbar}
     />
   );

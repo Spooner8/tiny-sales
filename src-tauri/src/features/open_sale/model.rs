@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LineDiscountDraft {
-    /// "none", "percent" or "price".
+    /// "none", "percent" or "amount" ("price" in sales opened before amounts off).
     pub kind: String,
     pub input: String,
 }

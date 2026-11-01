@@ -1,6 +1,7 @@
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 import {
   BarChart3,
+  ClipboardList,
   FolderTree,
   LayoutTemplate,
   Package,
@@ -11,6 +12,7 @@ import {
   Settings,
   ShoppingCart,
   Tags,
+  Users,
 } from "lucide-react";
 import type { LinkProps } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -30,6 +32,8 @@ interface NavItem {
 
 const PRIMARY_ITEMS: NavItem[] = [
   { to: "/", label: "Kasse", exact: true, icon: ShoppingCart },
+  { to: "/orders", label: "Aufträge", exact: false, icon: ClipboardList },
+  { to: "/customers", label: "Kunden", exact: false, icon: Users },
   { to: "/articles", label: "Artikel", exact: false, icon: Package },
   { to: "/sales", label: "Verkäufe", exact: false, icon: Receipt },
   { to: "/statistics", label: "Statistik", exact: false, icon: BarChart3 },

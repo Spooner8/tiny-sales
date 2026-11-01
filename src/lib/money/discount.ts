@@ -12,7 +12,7 @@ export function roundTo5Rappen(cents: number): number {
 /** Unit price after an optional line discount. */
 export function lineUnitPriceCents(priceCents: number, discount: LineDiscount | null): number {
   if (!discount) return priceCents;
-  if (discount.kind === "price") return discount.value;
+  if (discount.kind === "amount") return priceCents - discount.value;
   return roundTo5Rappen((priceCents * (100 - discount.value)) / 100);
 }
 
@@ -67,9 +67,23 @@ export function parseLineDiscount(
     return value <= 100 ? { discount: { kind: "percent", value }, error: null } : { discount: null, error: "Max. 100 %" };
   }
   const cents = Math.round(value * 100);
+  if (cents === 0) return { discount: null, error: null };
   return cents <= priceCents
-    ? { discount: { kind: "price", value: cents }, error: null }
-    : { discount: null, error: "Höher als der aktuelle Preis" };
+    ? { discount: { kind: "amount", value: cents }, error: null }
+    : { discount: null, error: "Höher als der Preis" };
+}
+
+/**
+ * Sales opened before line discounts became amounts off may still hold a
+ * new unit price ("price"); it becomes the matching amount off.
+ */
+export function upgradeLineDiscountDraft(draft: LineDiscountDraft, priceCents: number): LineDiscountDraft {
+  const stored = draft as { kind: string; input: string };
+  if (stored.kind !== "price") return draft;
+  const newPrice = parseDecimalInput(stored.input);
+  if (newPrice === null || Number.isNaN(newPrice)) return EMPTY_LINE_DISCOUNT;
+  const amount = priceCents - Math.round(newPrice * 100);
+  return amount > 0 ? { kind: "amount", input: (amount / 100).toFixed(2) } : EMPTY_LINE_DISCOUNT;
 }
 
 /** What the cashier typed for the sale discount, before validation. */

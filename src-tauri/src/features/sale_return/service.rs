@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
 use crate::error::AppError;
+use crate::features::sale::model::SaleItemDetail;
 use crate::features::sale::repository::SaleRepository;
 use crate::money;
 
@@ -18,12 +19,18 @@ impl SaleReturnService {
         if input.items.is_empty() {
             return Err(AppError::Validation("Keine Positionen für die Retoure ausgewählt".into()));
         }
+        if !input.refund_method.usable_for_refunds() {
+            return Err(AppError::Validation(
+                "Rückerstattungen sind nur bar, per Twint, Karte oder Überweisung möglich".into(),
+            ));
+        }
 
         let sale = SaleRepository::find_with_items(pool, input.sale_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Verkauf {} nicht gefunden", input.sale_id)))?;
 
         let already_returned = SaleReturnRepository::returned_quantities(pool, input.sale_id).await?;
+        let lines = lines_per_article(sale.items);
 
         let mut prepared_items = Vec::with_capacity(input.items.len());
         let mut total_refund_cents: i64 = 0;
@@ -32,8 +39,7 @@ impl SaleReturnService {
             if item.quantity <= 0 {
                 return Err(AppError::Validation("Menge muss grösser als 0 sein".into()));
             }
-            let original = sale
-                .items
+            let original = lines
                 .iter()
                 .find(|i| i.article_id == item.article_id)
                 .ok_or_else(|| {
@@ -80,4 +86,21 @@ impl SaleReturnService {
     pub async fn list_for_sale(pool: &SqlitePool, sale_id: i64) -> Result<Vec<SaleReturnWithItems>, AppError> {
         SaleReturnRepository::list_for_sale(pool, sale_id).await
     }
+}
+
+/// Lines of a customer order can repeat an article, e.g. with different
+/// notes. Returns are booked per article, so its lines are combined.
+fn lines_per_article(items: Vec<SaleItemDetail>) -> Vec<SaleItemDetail> {
+    let mut lines: Vec<SaleItemDetail> = Vec::with_capacity(items.len());
+    for item in items {
+        match lines.iter_mut().find(|line| line.article_id == item.article_id) {
+            Some(line) => {
+                line.quantity += item.quantity;
+                line.line_total_cents += item.line_total_cents;
+                line.discount_cents += item.discount_cents;
+            }
+            None => lines.push(item),
+        }
+    }
+    lines
 }

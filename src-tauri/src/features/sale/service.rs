@@ -2,6 +2,7 @@ use sqlx::SqlitePool;
 
 use crate::error::AppError;
 use crate::features::article::repository::ArticleRepository;
+use crate::features::company_profile::repository::CompanyProfileRepository;
 use crate::money;
 
 use super::model::{
@@ -16,13 +17,11 @@ pub struct SaleService;
 
 impl SaleService {
     pub async fn create(pool: &SqlitePool, input: NewSale) -> Result<SaleWithItems, AppError> {
-        if input.items.is_empty() {
-            return Err(AppError::Validation("Warenkorb ist leer".into()));
+        if !input.payment_method.paid_at_checkout() {
+            return Err(AppError::Validation("Zahlung auf Rechnung ist nur für Aufträge möglich".into()));
         }
 
         let mut prepared_items = Vec::with_capacity(input.items.len());
-        let mut subtotal_cents: i64 = 0;
-
         for item in &input.items {
             if item.quantity <= 0 {
                 return Err(AppError::Validation("Menge muss grösser als 0 sein".into()));
@@ -35,7 +34,6 @@ impl SaleService {
             // (see SaleRepository::create).
             let (unit_price_cents, line_discount_kind, line_discount_value) =
                 Self::line_price(article.sale_price_cents, item.discount, &article.name)?;
-            subtotal_cents += unit_price_cents * item.quantity;
             prepared_items.push(PreparedSaleItem {
                 article_id: article.id,
                 quantity: item.quantity,
@@ -45,54 +43,91 @@ impl SaleService {
                 line_discount_kind,
                 line_discount_value,
                 discount_cents: 0,
+                note: None,
             });
         }
 
-        let sale_discount = Self::sale_discount(input.discount, &prepared_items, subtotal_cents)?;
-        // Spread the sale discount over the lines it applies to, so revenue per
-        // article / product group and refunds reflect what was actually paid.
-        for (item, share) in prepared_items
+        let vat_rate_percent = CompanyProfileRepository::get(pool).await?.vat_rate_percent;
+        let mut prepared = Self::prepare(
+            prepared_items,
+            input.discount,
+            input.payment_method,
+            input.cash_given_cents,
+            vat_rate_percent,
+        )?;
+        prepared.pickup_number = input.pickup_number;
+        prepared.open_sale_id = input.open_sale_id;
+        SaleRepository::create(pool, &prepared).await
+    }
+
+    /// Applies the sale discount and the payment to priced lines. Shared by
+    /// the checkout and customer orders, whose lines keep the prices agreed
+    /// when the order was taken. Prices include VAT; `vat_rate_percent` is
+    /// the rate in force now, kept with the sale.
+    pub fn prepare(
+        mut items: Vec<PreparedSaleItem>,
+        discount: Option<SaleDiscountInput>,
+        payment_method: PaymentMethod,
+        cash_given_cents: Option<i64>,
+        vat_rate_percent: f64,
+    ) -> Result<PreparedSale, AppError> {
+        if items.is_empty() {
+            return Err(AppError::Validation("Warenkorb ist leer".into()));
+        }
+        let totals = Self::apply_sale_discount(&mut items, discount)?;
+
+        let (cash_given_cents, change_cents) = match payment_method {
+            PaymentMethod::Cash => {
+                let given = cash_given_cents
+                    .ok_or_else(|| AppError::Validation("Gegebener Betrag fehlt für Barzahlung".into()))?;
+                if given < totals.total_cents {
+                    return Err(AppError::Validation("Gegebener Betrag reicht nicht aus".into()));
+                }
+                (Some(given), Some(given - totals.total_cents))
+            }
+            PaymentMethod::Twint | PaymentMethod::Card | PaymentMethod::Invoice | PaymentMethod::BankTransfer => {
+                (None, None)
+            }
+        };
+
+        Ok(PreparedSale {
+            payment_method,
+            subtotal_cents: totals.subtotal_cents,
+            discount_cents: totals.discount.cents,
+            discount_percent: totals.discount.percent,
+            discount_kind: totals.discount.kind,
+            discount_cumulative: totals.discount.cumulative,
+            total_cents: totals.total_cents,
+            cash_given_cents,
+            change_cents,
+            vat_rate_percent,
+            vat_cents: money::vat_included(totals.total_cents, vat_rate_percent),
+            pickup_number: None,
+            open_sale_id: None,
+            items,
+        })
+    }
+
+    /// Validates the sale discount and spreads it over the lines it applies
+    /// to, so revenue per article / product group and refunds reflect what
+    /// was actually paid.
+    pub fn apply_sale_discount(
+        items: &mut [PreparedSaleItem],
+        discount: Option<SaleDiscountInput>,
+    ) -> Result<SaleTotals, AppError> {
+        let subtotal_cents: i64 = items.iter().map(|i| i.unit_price_cents * i.quantity).sum();
+        let sale_discount = Self::sale_discount(discount, items, subtotal_cents)?;
+        for (item, share) in items
             .iter_mut()
             .zip(money::allocate_proportionally(sale_discount.cents, &sale_discount.weights))
         {
             item.discount_cents = share;
         }
-        let discount_cents = sale_discount.cents;
-        let total_cents = subtotal_cents - discount_cents;
-
-        let (cash_given_cents, change_cents) = match input.payment_method {
-            PaymentMethod::Cash => {
-                let given = input
-                    .cash_given_cents
-                    .ok_or_else(|| AppError::Validation("Gegebener Betrag fehlt für Barzahlung".into()))?;
-                if given < total_cents {
-                    return Err(AppError::Validation("Gegebener Betrag reicht nicht aus".into()));
-                }
-                (Some(given), Some(given - total_cents))
-            }
-            PaymentMethod::Twint | PaymentMethod::Card => (None, None),
-        };
-
-        let prepared = PreparedSale {
-            payment_method: input.payment_method,
-            subtotal_cents,
-            discount_cents,
-            discount_percent: sale_discount.percent,
-            discount_kind: sale_discount.kind,
-            discount_cumulative: sale_discount.cumulative,
-            total_cents,
-            cash_given_cents,
-            change_cents,
-            pickup_number: input.pickup_number,
-            open_sale_id: input.open_sale_id,
-            items: prepared_items,
-        };
-
-        SaleRepository::create(pool, &prepared).await
+        Ok(SaleTotals { subtotal_cents, total_cents: subtotal_cents - sale_discount.cents, discount: sale_discount })
     }
 
     /// Unit price after an optional line discount, plus how it was given.
-    fn line_price(
+    pub fn line_price(
         price_cents: i64,
         discount: Option<LineDiscountInput>,
         article_name: &str,
@@ -107,13 +142,13 @@ impl SaleService {
                 }
                 Ok((money::apply_percent_discount(price_cents, value), Some("percent"), Some(value)))
             }
-            Some(LineDiscountInput::Price { value }) => {
-                if value < 0 || value > price_cents {
+            Some(LineDiscountInput::Amount { value }) => {
+                if value <= 0 || value > price_cents {
                     return Err(AppError::Validation(format!(
-                        "Neuer Preis für \"{article_name}\" muss zwischen 0 und dem aktuellen Preis liegen"
+                        "Nachlass für \"{article_name}\" muss grösser als 0 und höchstens der Preis sein"
                     )));
                 }
-                Ok((value, Some("price"), Some(value as f64)))
+                Ok((price_cents - value, Some("amount"), Some(value as f64)))
             }
         }
     }
@@ -201,14 +236,21 @@ impl SaleService {
     }
 }
 
+/// Sums of priced lines after the sale discount.
+pub struct SaleTotals {
+    pub subtotal_cents: i64,
+    pub total_cents: i64,
+    pub discount: SaleDiscount,
+}
+
 /// The sale discount and the per-line weights it is spread by (0 for lines
 /// it doesn't apply to).
-struct SaleDiscount {
-    cents: i64,
+pub struct SaleDiscount {
+    pub cents: i64,
     weights: Vec<i64>,
-    percent: Option<f64>,
-    kind: Option<&'static str>,
-    cumulative: Option<bool>,
+    pub percent: Option<f64>,
+    pub kind: Option<&'static str>,
+    pub cumulative: Option<bool>,
 }
 
 impl SaleDiscount {
@@ -231,6 +273,7 @@ mod tests {
             line_discount_kind: None,
             line_discount_value: None,
             discount_cents: 0,
+            note: None,
         }
     }
 
@@ -277,8 +320,9 @@ mod tests {
         let (price, kind, _) =
             SaleService::line_price(2000, Some(LineDiscountInput::Percent { value: 10.0 }), "x").unwrap();
         assert_eq!((price, kind), (1800, Some("percent")));
-        let (price, kind, _) = SaleService::line_price(2000, Some(LineDiscountInput::Price { value: 1500 }), "x").unwrap();
-        assert_eq!((price, kind), (1500, Some("price")));
-        assert!(SaleService::line_price(2000, Some(LineDiscountInput::Price { value: 2500 }), "x").is_err());
+        let (price, kind, _) = SaleService::line_price(2000, Some(LineDiscountInput::Amount { value: 500 }), "x").unwrap();
+        assert_eq!((price, kind), (1500, Some("amount")));
+        assert!(SaleService::line_price(2000, Some(LineDiscountInput::Amount { value: 2500 }), "x").is_err());
+        assert!(SaleService::line_price(2000, Some(LineDiscountInput::Amount { value: 0 }), "x").is_err());
     }
 }

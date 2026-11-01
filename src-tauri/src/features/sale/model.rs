@@ -9,6 +9,10 @@ pub enum PaymentMethod {
     Cash,
     Twint,
     Card,
+    /// Only for customer orders: completed by issuing an invoice.
+    Invoice,
+    /// Only for refunds: money paid back to the customer's account.
+    BankTransfer,
 }
 
 impl PaymentMethod {
@@ -17,7 +21,20 @@ impl PaymentMethod {
             PaymentMethod::Cash => "Cash",
             PaymentMethod::Twint => "Twint",
             PaymentMethod::Card => "Card",
+            PaymentMethod::Invoice => "Invoice",
+            PaymentMethod::BankTransfer => "BankTransfer",
         }
+    }
+
+    /// Whether the money is taken at the checkout. An invoice is paid later,
+    /// so an order paid by invoice is completed without the checkout.
+    pub fn paid_at_checkout(&self) -> bool {
+        matches!(self, PaymentMethod::Cash | PaymentMethod::Twint | PaymentMethod::Card)
+    }
+
+    /// Ways to pay money back for a return: at the checkout or by transfer.
+    pub fn usable_for_refunds(&self) -> bool {
+        self.paid_at_checkout() || matches!(self, PaymentMethod::BankTransfer)
     }
 }
 
@@ -29,6 +46,8 @@ impl FromStr for PaymentMethod {
             "Cash" => Ok(Self::Cash),
             "Twint" => Ok(Self::Twint),
             "Card" => Ok(Self::Card),
+            "Invoice" => Ok(Self::Invoice),
+            "BankTransfer" => Ok(Self::BankTransfer),
             other => Err(AppError::Validation(format!("Unbekannte Zahlart: {other}"))),
         }
     }
@@ -55,6 +74,18 @@ pub struct Sale {
     pub pickup_number: Option<String>,
     pub cash_given_cents: Option<i64>,
     pub change_cents: Option<i64>,
+    /// VAT rate when the sale was booked; None for sales from before VAT was recorded.
+    pub vat_rate_percent: Option<f64>,
+    /// VAT contained in total_cents.
+    pub vat_cents: Option<i64>,
+    /// Set for sales that completed a customer order.
+    pub customer_order_id: Option<i64>,
+    pub customer_name: Option<String>,
+    pub customer_company: Option<String>,
+    /// Set for sales paid by invoice.
+    pub invoice_id: Option<i64>,
+    /// Day the invoice was paid; None while it is open.
+    pub invoice_paid_on: Option<String>,
 }
 
 /// One row of the sales list: a sale, or a return booked against one. A
@@ -70,6 +101,12 @@ pub struct SaleListEntry {
     pub payment_method: PaymentMethod,
     pub total_cents: i64,
     pub pickup_number: Option<String>,
+    /// For sales of a customer order.
+    pub customer_name: Option<String>,
+    pub customer_company: Option<String>,
+    /// For sales paid by invoice (not set on their returns).
+    pub invoice_id: Option<i64>,
+    pub invoice_paid_on: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
@@ -87,14 +124,17 @@ pub struct SaleItemDetail {
     pub unit_price_cents: i64,
     /// Article promotion in percent at the time of sale (0 = none).
     pub article_discount_percent: f64,
-    /// "percent" or "price" when a line discount was given at checkout.
+    /// "percent" or "amount" when a line discount was given; "price" (a new
+    /// unit price) on sales from before line discounts became amounts off.
     pub line_discount_kind: Option<String>,
-    /// The percentage, or the overridden unit price in Rappen.
+    /// The percentage, the amount off per unit or the new unit price in Rappen.
     pub line_discount_value: Option<f64>,
     /// quantity * unit_price_cents, before the sale discount.
     pub line_total_cents: i64,
     /// This line's share of the sale discount.
     pub discount_cents: i64,
+    /// Extra information from the customer order line.
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -112,14 +152,14 @@ pub struct NewSaleItem {
     pub discount: Option<LineDiscountInput>,
 }
 
-/// Discount on a single line, entered at checkout.
-#[derive(Debug, Clone, Copy, Deserialize)]
+/// Discount on a single line, entered at checkout or in a customer order.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum LineDiscountInput {
     /// Percent off the current (promotion) price.
     Percent { value: f64 },
-    /// New unit price in Rappen.
-    Price { value: i64 },
+    /// Amount off the current (promotion) price per unit, in Rappen.
+    Amount { value: i64 },
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,7 +177,7 @@ pub struct NewSale {
 /// Discount on the whole sale as entered at checkout, e.g.
 /// `{ "kind": "percent", "value": 10, "cumulative": false }` or
 /// `{ "kind": "total", "value": 4000 }`.
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum SaleDiscountInput {
     /// `cumulative = false` leaves lines that already have a promotion or
@@ -159,6 +199,8 @@ pub struct PreparedSale {
     pub total_cents: i64,
     pub cash_given_cents: Option<i64>,
     pub change_cents: Option<i64>,
+    pub vat_rate_percent: f64,
+    pub vat_cents: i64,
     pub pickup_number: Option<String>,
     pub open_sale_id: Option<String>,
     pub items: Vec<PreparedSaleItem>,
@@ -173,6 +215,7 @@ pub struct PreparedSaleItem {
     pub line_discount_kind: Option<&'static str>,
     pub line_discount_value: Option<f64>,
     pub discount_cents: i64,
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]

@@ -2,11 +2,12 @@ import { Button } from "../../atoms/Button";
 import { Select } from "../../atoms/Select";
 import { formatArticleCode } from "../../../lib/articleCode";
 import { formatChf } from "../../../lib/money/change";
-import { formatPercent } from "../../../lib/money/discount";
-import { PAYMENT_METHOD_LABELS } from "../../../types/sale";
+import { applyPrintPageStyle } from "../../../lib/printPage";
+import { lineDiscountNote, saleDiscountLabel, vatLabel } from "../../../lib/saleText";
+import { formatReceiptNumber, PAYMENT_METHOD_LABELS } from "../../../types/sale";
 import { RECEIPT_PAPER_SIZES } from "../../../types/settings";
 import type { CompanyProfile } from "../../../types/companyProfile";
-import type { SaleItemDetail, SaleWithItems } from "../../../types/sale";
+import type { SaleWithItems } from "../../../types/sale";
 import type { ReceiptPaperSize } from "../../../types/settings";
 
 export interface ReceiptProps {
@@ -19,43 +20,14 @@ export interface ReceiptProps {
 }
 
 function applyPrintPageSize(size: ReceiptPaperSize) {
-  const styleId = "receipt-print-page-size";
-  let style = document.getElementById(styleId) as HTMLStyleElement | null;
-  if (!style) {
-    style = document.createElement("style");
-    style.id = styleId;
-    document.head.appendChild(style);
-  }
   const margin = size === "A4" ? "15mm" : "10mm";
-  style.textContent = `@page { size: ${size}; margin: ${margin}; }`;
+  applyPrintPageStyle(`@page { size: ${size}; margin: ${margin}; }`);
 }
 
 function formatTimestamp(timestamp: string): string {
   const date = new Date(timestamp.replace(" ", "T") + "Z");
   if (Number.isNaN(date.getTime())) return timestamp;
   return date.toLocaleString("de-CH", { dateStyle: "medium", timeStyle: "short" });
-}
-
-/** Explains why a line costs less than its regular price, e.g. "Aktion −20 %". */
-function lineDiscountNote(item: SaleItemDetail): string | null {
-  if (item.unitPriceCents >= item.listPriceCents) return null;
-  let reason = "Rabatt";
-  if (item.lineDiscountKind === "percent" && item.lineDiscountValue !== null) {
-    reason = `Rabatt −${formatPercent(item.lineDiscountValue)}`;
-  } else if (item.lineDiscountKind === "price") {
-    reason = "Preis angepasst";
-  } else if (item.articleDiscountPercent > 0) {
-    reason = `Aktion −${formatPercent(item.articleDiscountPercent)}`;
-  }
-  return `${reason} · statt ${formatChf(item.listPriceCents)}`;
-}
-
-function saleDiscountLabel(sale: SaleWithItems["sale"]): string {
-  if (sale.discountKind === "percent" && sale.discountPercent !== null) {
-    const scope = sale.discountCumulative === false ? " (ohne rabattierte Artikel)" : "";
-    return `Gesamtrabatt ${formatPercent(sale.discountPercent)}${scope}`;
-  }
-  return "Gesamtrabatt";
 }
 
 export function Receipt({ sale, company, paperSize, onPaperSizeChange, onNewSale }: ReceiptProps) {
@@ -108,7 +80,23 @@ export function Receipt({ sale, company, paperSize, onPaperSizeChange, onNewSale
             <dt>Datum</dt>
             <dd>{formatTimestamp(header.timestamp)}</dd>
             <dt>Beleg-Nr.</dt>
-            <dd>{header.id}</dd>
+            <dd>{formatReceiptNumber(header.id)}</dd>
+            {header.customerOrderId !== null && (
+              <>
+                <dt>Auftrag</dt>
+                <dd>{header.customerOrderId}</dd>
+                <dt>Kunde</dt>
+                <dd>
+                  {header.customerCompany && (
+                    <>
+                      {header.customerCompany}
+                      <br />
+                    </>
+                  )}
+                  {header.customerName}
+                </dd>
+              </>
+            )}
           </dl>
         </div>
 
@@ -122,8 +110,9 @@ export function Receipt({ sale, company, paperSize, onPaperSizeChange, onNewSale
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.articleId}>
+            {items.map((item, index) => (
+              // Order lines can repeat an article, e.g. with different notes.
+              <tr key={index}>
                 <td>
                   <span className="receipt-item-name">{item.articleName}</span>
                   <span className="receipt-item-code">
@@ -131,6 +120,7 @@ export function Receipt({ sale, company, paperSize, onPaperSizeChange, onNewSale
                     {item.articleInternalNumber && ` / ${item.articleInternalNumber}`}
                   </span>
                   {lineDiscountNote(item) && <span className="receipt-item-promo">{lineDiscountNote(item)}</span>}
+                  {item.note && <span className="receipt-item-note">{item.note}</span>}
                 </td>
                 <td className="receipt-num">{item.quantity}</td>
                 <td className="receipt-num">{formatChf(item.unitPriceCents)}</td>
@@ -151,6 +141,12 @@ export function Receipt({ sale, company, paperSize, onPaperSizeChange, onNewSale
           )}
           <dt className="receipt-grand-total">Total CHF</dt>
           <dd className="receipt-grand-total">{formatChf(header.totalCents)}</dd>
+          {vatLabel(header) && (
+            <>
+              <dt className="receipt-vat">{vatLabel(header)}</dt>
+              <dd className="receipt-vat">{formatChf(header.vatCents ?? 0)}</dd>
+            </>
+          )}
         </dl>
 
         <dl className="receipt-payment">

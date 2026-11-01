@@ -17,7 +17,7 @@ export interface CompanyProfileFormProps {
   onChange?: () => void;
 }
 
-type TextField = Exclude<keyof CompanyProfile, "logo" | "logoMark">;
+type TextField = Exclude<keyof CompanyProfile, "logo" | "logoMark" | "invoicePaymentDays" | "vatRatePercent">;
 
 const TEXT_FIELDS: { key: TextField; label: string; placeholder: string }[] = [
   { key: "name", label: "Firmenname", placeholder: "z.B. Muster GmbH" },
@@ -28,6 +28,7 @@ const TEXT_FIELDS: { key: TextField; label: string; placeholder: string }[] = [
   { key: "vatNumber", label: "MWST-Nummer", placeholder: "z.B. CHE-123.456.789 MWST" },
   { key: "receiptThanks", label: "Quittung: Dankeszeile", placeholder: "z.B. Vielen Dank für Ihren Einkauf!" },
   { key: "receiptSignature", label: "Quittung: Grusszeile", placeholder: "z.B. Ihr Muster-Team" },
+  { key: "iban", label: "IBAN für Rechnungen (QR-Zahlteil)", placeholder: "z.B. CH44 3199 9123 0008 8901 2" },
 ];
 
 export function CompanyProfileForm({
@@ -39,6 +40,11 @@ export function CompanyProfileForm({
   onChange,
 }: CompanyProfileFormProps) {
   const [values, setValues] = useState<CompanyProfile>(initial);
+  const [paymentDays, setPaymentDays] = useState(String(initial.invoicePaymentDays));
+  const paymentDaysValid = /^\d{1,3}$/.test(paymentDays.trim());
+  const [vatRate, setVatRate] = useState(String(initial.vatRatePercent));
+  // Empty means no VAT; up to two decimals, e.g. 8.1 or 2,6.
+  const vatRateValid = vatRate.trim() === "" || /^\d{1,2}([.,]\d{1,2})?$/.test(vatRate.trim());
 
   function update(change: Partial<CompanyProfile>) {
     setValues((prev) => ({ ...prev, ...change }));
@@ -47,7 +53,12 @@ export function CompanyProfileForm({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    onSubmit(values);
+    if (!paymentDaysValid || !vatRateValid) return;
+    onSubmit({
+      ...values,
+      invoicePaymentDays: Number(paymentDays.trim()),
+      vatRatePercent: vatRate.trim() ? Number.parseFloat(vatRate.trim().replace(",", ".")) : 0,
+    });
   }
 
   return (
@@ -63,6 +74,37 @@ export function CompanyProfileForm({
             />
           </FormField>
         ))}
+        <FormField
+          label="MWST-Satz in % (0 = keine MWST ausweisen)"
+          htmlFor="company-vat-rate"
+          error={vatRateValid ? null : "Bitte einen Satz wie 8.1 eingeben"}
+        >
+          <Input
+            id="company-vat-rate"
+            inputMode="decimal"
+            value={vatRate}
+            onChange={(e) => {
+              setVatRate(e.target.value);
+              onChange?.();
+            }}
+            placeholder="z.B. 8.1"
+          />
+        </FormField>
+        <FormField
+          label="Zahlungsfrist für Rechnungen (Tage)"
+          htmlFor="company-invoice-payment-days"
+          error={paymentDaysValid ? null : "Bitte eine Anzahl Tage eingeben, z.B. 30"}
+        >
+          <Input
+            id="company-invoice-payment-days"
+            inputMode="numeric"
+            value={paymentDays}
+            onChange={(e) => {
+              setPaymentDays(e.target.value);
+              onChange?.();
+            }}
+          />
+        </FormField>
       </div>
 
       <div className="company-profile-images">

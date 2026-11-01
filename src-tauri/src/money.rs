@@ -15,6 +15,15 @@ pub fn apply_percent_discount(price_cents: i64, percent: f64) -> i64 {
     round_to_5_rappen(price_cents as f64 * (100.0 - percent) / 100.0)
 }
 
+/// VAT contained in an amount that includes it, rounded to the Rappen.
+/// Only the backend computes it; receipts and invoices show the stored value.
+pub fn vat_included(gross_cents: i64, rate_percent: f64) -> i64 {
+    if rate_percent <= 0.0 {
+        return 0;
+    }
+    (gross_cents as f64 * rate_percent / (100.0 + rate_percent)).round() as i64
+}
+
 /// Splits `amount` across `weights` proportionally so the parts sum to
 /// exactly `amount` (largest-remainder method). Used to spread a sale
 /// discount over its lines.
@@ -58,6 +67,13 @@ mod tests {
         assert_eq!(apply_percent_discount(2500, 20.0), 2000);
         assert_eq!(apply_percent_discount(1990, 15.0), 1690);
         assert_eq!(apply_percent_discount(1990, 0.0), 1990);
+    }
+
+    #[test]
+    fn vat_is_taken_out_of_the_gross_amount() {
+        assert_eq!(vat_included(10000, 8.1), 749); // 100.00 incl. 8.1 % = 7.49
+        assert_eq!(vat_included(10810, 8.1), 810);
+        assert_eq!(vat_included(10000, 0.0), 0);
     }
 
     #[test]

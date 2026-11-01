@@ -11,10 +11,10 @@ export interface LineDiscountEditorProps {
 const KIND_OPTIONS: { value: LineDiscountDraft["kind"]; label: string }[] = [
   { value: "none", label: "–" },
   { value: "percent", label: "%" },
-  { value: "price", label: "Preis" },
+  { value: "amount", label: "CHF" },
 ];
 
-/** Compact per-line discount input for the cart: percent off or a new unit price. */
+/** Compact per-line discount input: percent off or an amount off per unit (CHF). */
 export function LineDiscountEditor({ draft, error, onChange }: LineDiscountEditorProps) {
   return (
     <div className="line-discount-editor">
@@ -31,8 +31,8 @@ export function LineDiscountEditor({ draft, error, onChange }: LineDiscountEdito
             inputMode="decimal"
             value={draft.input}
             onChange={(e) => onChange({ ...draft, input: e.target.value })}
-            placeholder={draft.kind === "percent" ? "z.B. 10" : "CHF"}
-            aria-label={draft.kind === "percent" ? "Rabatt in Prozent" : "Neuer Stückpreis in CHF"}
+            placeholder={draft.kind === "percent" ? "z.B. 10" : "z.B. 5.00"}
+            aria-label={draft.kind === "percent" ? "Rabatt in Prozent" : "Nachlass pro Stück in CHF"}
             className="line-discount-value"
           />
         )}
