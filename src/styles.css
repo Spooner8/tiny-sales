@@ -484,6 +484,102 @@
   font-size: 14px;
 }
 
+/* Two columns of fields, e.g. the article form; .form-grid-full spans both. */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.form-grid-full {
+  grid-column: 1 / -1;
+}
+
+/* Checkboxes next to a field: lined up with its input, below the label. */
+.form-grid-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-self: end;
+  min-height: 40px;
+  gap: 8px 20px;
+}
+
+/* ---- Modal ---- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: oklch(0 0 0 / 0.4);
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 40;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft-lg);
+  outline: none;
+}
+
+.modal-md {
+  width: min(520px, calc(100vw - 48px));
+}
+
+.modal-lg {
+  width: min(880px, calc(100vw - 48px));
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+}
+
+.modal-close:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+/* The modal is the card; a form inside it doesn't draw its own. */
+.modal .form {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
 /* ---- Tables ---- */
 
 .data-table {
@@ -1319,6 +1415,10 @@
   max-width: none;
 }
 
+.sales-table-refund {
+  color: var(--destructive);
+}
+
 .sale-return-history {
   margin-top: 20px;
   padding-top: 16px;
@@ -1449,6 +1549,30 @@
   .labels-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Settings page: two columns of equal width, each at least about 10 %
+   narrower than the cards' former fixed width; below that the page scrolls
+   sideways. The left column starts with two small cards side by side. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(700px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.settings-layout-column {
+  min-width: 0;
+}
+
+.settings-layout-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.settings-layout .settings-section {
+  max-width: none;
 }
 
 .label-config-grid {

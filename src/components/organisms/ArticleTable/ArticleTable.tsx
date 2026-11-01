@@ -26,6 +26,7 @@ const columnHelper = createColumnHelper<Article>();
 const STATUS_ACTIVE = "Aktiv";
 const STATUS_INACTIVE = "Inaktiv";
 const STATUS_DISCONTINUED = "Auslaufend";
+const STATUS_FINISHING = "Veredelung";
 
 export function ArticleTable({
   articles,
@@ -46,9 +47,9 @@ export function ArticleTable({
       header: "Art-Nr.",
       meta: { searchable: true, filterable: true },
     }),
-    columnHelper.accessor((a) => a.patternNumber ?? "", {
-      id: "patternNumber",
-      header: "Muster-Nr.",
+    columnHelper.accessor((a) => a.internalNumber ?? "", {
+      id: "internalNumber",
+      header: "Interne Nr.",
       cell: ({ getValue }) => getValue() || "–",
       meta: { searchable: true, filterable: true },
     }),
@@ -104,11 +105,16 @@ export function ArticleTable({
             {row.original.active ? STATUS_ACTIVE : STATUS_INACTIVE}
           </Badge>
           {row.original.discontinued && <Badge tone="warning">{STATUS_DISCONTINUED}</Badge>}
+          {row.original.isFinishing && <Badge tone="primary">{STATUS_FINISHING}</Badge>}
         </div>
       ),
-      // "Auslaufend" is a flag next to active/inactive, not a third state, so
-      // a discontinued article shows up under both of its values.
-      getUniqueValues: (a) => [a.active ? STATUS_ACTIVE : STATUS_INACTIVE, ...(a.discontinued ? [STATUS_DISCONTINUED] : [])],
+      // "Auslaufend" and "Veredelung" are flags next to active/inactive, not
+      // further states, so an article shows up under each of its values.
+      getUniqueValues: (a) => [
+        a.active ? STATUS_ACTIVE : STATUS_INACTIVE,
+        ...(a.discontinued ? [STATUS_DISCONTINUED] : []),
+        ...(a.isFinishing ? [STATUS_FINISHING] : []),
+      ],
       meta: { filterable: true },
     }),
     columnHelper.display({
@@ -133,7 +139,7 @@ export function ArticleTable({
     <FilterableTable
       data={articles}
       columns={columns}
-      searchPlaceholder="Artikel suchen (Name, Art-Nr., Muster-Nr., Warengruppe...)"
+      searchPlaceholder="Artikel suchen (Name, Art-Nr., Interne Nr., Warengruppe...)"
       toolbar={toolbar}
     />
   );

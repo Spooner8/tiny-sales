@@ -3,7 +3,7 @@ use tauri::State;
 use crate::error::AppError;
 use crate::state::AppState;
 
-use super::model::{ArticleRevenue, DailyRevenue, NewSale, ProductGroupRevenue, Sale, SaleWithItems};
+use super::model::{ArticleRevenue, DailyRevenue, NewSale, ProductGroupRevenue, SaleListEntry, SaleWithItems};
 use super::service::SaleService;
 
 #[tauri::command]
@@ -13,7 +13,7 @@ pub async fn create_sale(state: State<'_, AppState>, input: NewSale) -> Result<S
 }
 
 #[tauri::command]
-pub async fn list_sales(state: State<'_, AppState>, from: String, to: String) -> Result<Vec<Sale>, AppError> {
+pub async fn list_sales(state: State<'_, AppState>, from: String, to: String) -> Result<Vec<SaleListEntry>, AppError> {
     let pool = state.pool.lock().await;
     SaleService::list(&pool, &from, &to).await
 }

@@ -4,18 +4,21 @@ import type { ReactNode } from "react";
 import { Button } from "../../atoms/Button";
 import { FilterableTable } from "../FilterableTable";
 import { formatChf } from "../../../lib/money/change";
-import { PAYMENT_METHOD_LABELS } from "../../../types/sale";
-import type { Sale } from "../../../types/sale";
+import { PAYMENT_METHOD_LABELS, receiptNumber } from "../../../types/sale";
+import type { SaleListEntry } from "../../../types/sale";
 
 export interface SalesTableProps {
-  sales: Sale[];
+  /** Sales and returns; a return is its own row with a negative total. */
+  entries: SaleListEntry[];
+  /** The sale whose details are shown, also highlighted on its returns. */
   selectedId: number | null;
-  onSelect: (id: number) => void;
+  /** Called with the sale id, for returns that of the returned sale. */
+  onSelect: (saleId: number) => void;
   /** Shown next to the search above the table. */
   toolbar?: ReactNode;
 }
 
-const columnHelper = createColumnHelper<Sale>();
+const columnHelper = createColumnHelper<SaleListEntry>();
 
 function formatTimestamp(timestamp: string): string {
   const date = new Date(timestamp.replace(" ", "T") + "Z");
@@ -29,7 +32,7 @@ function formatDate(timestamp: string): string {
   return date.toLocaleDateString("de-CH", { dateStyle: "medium" });
 }
 
-export function SalesTable({ sales, selectedId, onSelect, toolbar }: SalesTableProps) {
+export function SalesTable({ entries, selectedId, onSelect, toolbar }: SalesTableProps) {
   const columns = [
     columnHelper.accessor((sale) => formatTimestamp(sale.timestamp), {
       id: "timestamp",
@@ -38,8 +41,8 @@ export function SalesTable({ sales, selectedId, onSelect, toolbar }: SalesTableP
       getUniqueValues: (sale) => [formatDate(sale.timestamp)],
       meta: { searchable: true, filterable: true },
     }),
-    columnHelper.accessor((sale) => String(sale.id), {
-      id: "id",
+    columnHelper.accessor(receiptNumber, {
+      id: "receiptNumber",
       header: "Beleg-Nr.",
       meta: { searchable: true, filterable: true },
     }),
@@ -51,6 +54,9 @@ export function SalesTable({ sales, selectedId, onSelect, toolbar }: SalesTableP
     columnHelper.accessor((sale) => formatChf(sale.totalCents), {
       id: "total",
       header: "Summe (CHF)",
+      cell: ({ row, getValue }) => (
+        <span className={row.original.returnId !== null ? "sales-table-refund" : undefined}>{getValue()}</span>
+      ),
       meta: { searchable: true, filterable: true },
     }),
     columnHelper.accessor((sale) => sale.pickupNumber ?? "", {
@@ -65,8 +71,8 @@ export function SalesTable({ sales, selectedId, onSelect, toolbar }: SalesTableP
       cell: ({ row }) => (
         <Button
           size="sm"
-          variant={selectedId === row.original.id ? "primary" : "secondary"}
-          onClick={() => onSelect(row.original.id)}
+          variant={selectedId === row.original.saleId ? "primary" : "secondary"}
+          onClick={() => onSelect(row.original.saleId)}
         >
           Details
         </Button>
@@ -76,7 +82,7 @@ export function SalesTable({ sales, selectedId, onSelect, toolbar }: SalesTableP
 
   return (
     <FilterableTable
-      data={sales}
+      data={entries}
       columns={columns}
       searchPlaceholder="Verkäufe suchen (Datum, Beleg-Nr., Summe, Abholnummer...)"
       toolbar={toolbar}

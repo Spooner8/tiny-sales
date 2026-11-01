@@ -10,7 +10,8 @@ use super::repository::ArticleRepository;
 
 /// Business rules for articles: validation, generating a unique scan
 /// code, and making sure the referenced product group / subgroup /
-/// component articles exist and fit together.
+/// component articles exist and fit together (components must be marked
+/// as finishings).
 pub struct ArticleService;
 
 impl ArticleService {
@@ -48,6 +49,16 @@ impl ArticleService {
             &input.component_links,
         )
         .await?;
+        // Unmarking would leave links to an article that can no longer be
+        // picked as a finishing, and those articles could not be saved.
+        if !input.is_finishing {
+            let uses = ArticleRepository::count_component_uses(pool, input.id).await?;
+            if uses > 0 {
+                return Err(AppError::Validation(format!(
+                    "Veredelung kann nicht entfernt werden: {uses} Artikel verwenden diesen Artikel noch als Veredelung"
+                )));
+            }
+        }
         ArticleRepository::update(pool, &input).await
     }
 
@@ -106,11 +117,15 @@ impl ArticleService {
                     "Ein Artikel kann nicht sich selbst als Veredelung referenzieren".into(),
                 ));
             }
-            if ArticleRepository::find_by_id(pool, link.component_article_id)
-                .await?
-                .is_none()
-            {
-                return Err(AppError::Validation("Referenzierter Artikel existiert nicht".into()));
+            match ArticleRepository::find_by_id(pool, link.component_article_id).await? {
+                None => return Err(AppError::Validation("Referenzierter Artikel existiert nicht".into())),
+                Some(component) if !component.is_finishing => {
+                    return Err(AppError::Validation(format!(
+                        "\"{}\" ist nicht als Veredelung markiert",
+                        component.name
+                    )));
+                }
+                Some(_) => {}
             }
         }
         Ok(())

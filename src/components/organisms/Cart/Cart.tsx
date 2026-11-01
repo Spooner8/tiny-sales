@@ -60,7 +60,7 @@ export function Cart({ lines, onChangeQuantity, onChangeDiscount, onRemove }: Ca
         <thead>
           <tr>
             <th>Art-Nr.</th>
-            <th>Muster-Nr.</th>
+            <th>Interne Nr.</th>
             <th className="col-name">Name</th>
             <th>Einzelpreis</th>
             <th>Rabatt</th>
@@ -73,7 +73,7 @@ export function Cart({ lines, onChangeQuantity, onChangeDiscount, onRemove }: Ca
           {lines.map((line) => (
             <tr key={line.article.id}>
               <td>{line.article.code}</td>
-              <td>{line.article.patternNumber ?? "–"}</td>
+              <td>{line.article.internalNumber ?? "–"}</td>
               <td className="col-name">
                 {line.article.name}
                 {line.article.discontinued && (

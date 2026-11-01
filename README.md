@@ -10,8 +10,8 @@ Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded 
 
 - **Checkout:** add articles with a barcode/QR scanner or by search. Supports per-line and whole-sale discounts, works out the change for cash payments by note and coin, and prints receipts in A4 or A5.
 - **Open sales:** leave a started sale open and serve another customer in between. Articles in open sales are reserved, and stock is deducted only when the sale is completed.
-- **Articles:** product groups and subgroups, components (e.g. finishings), promotions and stock levels.
-- **Sales history:** every completed sale, with full or partial returns.
+- **Articles:** product groups and subgroups, an internal number (also printed on receipts), finishings that can be attached to other articles, promotions and stock levels.
+- **Sales history:** every completed sale, with full or partial returns. A return is listed as its own entry with a negative total and the receipt number `R-<sale number>`, so the list adds up to the net revenue.
 - **Labels:** print QR code labels on configurable label sheets.
 - **Statistics:** revenue by day, product group and article.
 - **Settings:** company details and logo for receipts, backup and restore, a test mode with a separate database, and light and dark themes.

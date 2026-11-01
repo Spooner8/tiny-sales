@@ -5,6 +5,7 @@ import { Button } from "../../atoms/Button";
 import { Checkbox } from "../../ui/checkbox";
 import { Input } from "../../atoms/Input";
 import { Select } from "../../atoms/Select";
+import { Textarea } from "../../atoms/Textarea";
 import { FormField } from "../../molecules/FormField";
 import { formatArticleReference, matchesArticleSearch } from "../../../lib/articleCode";
 import { formatChf } from "../../../lib/money/change";
@@ -18,7 +19,9 @@ export interface ArticleFormValues {
   name: string;
   productGroupId: number;
   productSubgroupId: number;
-  patternNumber: string | null;
+  internalNumber: string | null;
+  description: string | null;
+  isFinishing: boolean;
   priceCents: number;
   stock: number;
   active: boolean;
@@ -93,7 +96,9 @@ export function ArticleForm({
     setProductSubgroupId(null);
     clearError("productGroup");
   }
-  const [patternNumber, setPatternNumber] = useState(initial?.patternNumber ?? "");
+  const [internalNumber, setInternalNumber] = useState(initial?.internalNumber ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [isFinishing, setIsFinishing] = useState(initial?.isFinishing ?? false);
   const [price, setPrice] = useState(initial ? centsToChfString(initial.priceCents) : "");
   const [stock, setStock] = useState(initial?.stock ?? 0);
   const [active, setActive] = useState(initial?.active ?? true);
@@ -109,7 +114,9 @@ export function ArticleForm({
   });
   const [componentQuery, setComponentQuery] = useState("");
 
-  const selectableArticles = articles.filter((a) => a.id !== initial?.id);
+  const otherArticles = articles.filter((a) => a.id !== initial?.id);
+  // Only articles marked as a finishing can be attached.
+  const selectableArticles = otherArticles.filter((a) => a.isFinishing);
 
   function addComponent(article: Article) {
     setComponentPrices((prev) => ({ ...prev, [article.id]: centsToChfString(article.totalPriceCents) }));
@@ -129,7 +136,7 @@ export function ArticleForm({
   }
 
   const selectedComponents = Object.keys(componentPrices)
-    .map((id) => selectableArticles.find((a) => a.id === Number(id)))
+    .map((id) => otherArticles.find((a) => a.id === Number(id)))
     .filter((a): a is Article => a !== undefined);
 
   const componentMatches =
@@ -182,7 +189,9 @@ export function ArticleForm({
       name,
       productGroupId,
       productSubgroupId,
-      patternNumber: patternNumber.trim() ? patternNumber.trim() : null,
+      internalNumber: internalNumber.trim() ? internalNumber.trim() : null,
+      description: description.trim() ? description.trim() : null,
+      isFinishing,
       priceCents,
       stock,
       active,
@@ -194,84 +203,129 @@ export function ArticleForm({
 
   return (
     <form className="form" onSubmit={handleSubmit} noValidate>
-      <FormField label="Name *" htmlFor="article-name" error={errors.name}>
-        <Input
-          id="article-name"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            clearError("name");
-          }}
-          autoFocus
-        />
-      </FormField>
+      <div className="form-grid">
+        <FormField label="Name *" htmlFor="article-name" error={errors.name}>
+          <Input
+            id="article-name"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              clearError("name");
+            }}
+            autoFocus
+          />
+        </FormField>
 
-      <FormField label="Warengruppe *" htmlFor="article-product-group" error={errors.productGroup}>
-        <Select
-          id="article-product-group"
-          value={productGroupId === null ? "" : String(productGroupId)}
-          onValueChange={(value) => changeProductGroup(Number(value))}
-          options={productGroups.map((g) => ({ value: String(g.id), label: g.name }))}
-          placeholder="Warengruppe wählen"
-        />
-      </FormField>
+        <FormField label="Interne Nr. (optional)" htmlFor="article-internal-number">
+          <Input
+            id="article-internal-number"
+            value={internalNumber}
+            onChange={(e) => setInternalNumber(e.target.value)}
+            placeholder="z.B. STR-001"
+          />
+        </FormField>
 
-      <FormField label="Warenuntergruppe *" htmlFor="article-product-subgroup" error={errors.productSubgroup}>
-        <Select
-          id="article-product-subgroup"
-          value={productSubgroupId === null ? "" : String(productSubgroupId)}
-          onValueChange={(value) => {
-            setProductSubgroupId(Number(value));
-            clearError("productSubgroup");
-          }}
-          options={subgroupsOfGroup.map((s) => ({ value: String(s.id), label: s.name }))}
-          placeholder={
-            productGroupId === null
-              ? "Zuerst Warengruppe wählen"
-              : subgroupsOfGroup.length === 0
-                ? "Keine Warenuntergruppen vorhanden"
-                : "Warenuntergruppe wählen"
-          }
-          disabled={subgroupsOfGroup.length === 0}
-        />
-      </FormField>
+        <FormField label="Warengruppe *" htmlFor="article-product-group" error={errors.productGroup}>
+          <Select
+            id="article-product-group"
+            value={productGroupId === null ? "" : String(productGroupId)}
+            onValueChange={(value) => changeProductGroup(Number(value))}
+            options={productGroups.map((g) => ({ value: String(g.id), label: g.name }))}
+            placeholder="Warengruppe wählen"
+          />
+        </FormField>
 
-      <FormField label="Musternummer (optional)" htmlFor="article-pattern-number">
-        <Input
-          id="article-pattern-number"
-          value={patternNumber}
-          onChange={(e) => setPatternNumber(e.target.value)}
-          placeholder="z.B. STR-001"
-        />
-      </FormField>
+        <FormField label="Warenuntergruppe *" htmlFor="article-product-subgroup" error={errors.productSubgroup}>
+          <Select
+            id="article-product-subgroup"
+            value={productSubgroupId === null ? "" : String(productSubgroupId)}
+            onValueChange={(value) => {
+              setProductSubgroupId(Number(value));
+              clearError("productSubgroup");
+            }}
+            options={subgroupsOfGroup.map((s) => ({ value: String(s.id), label: s.name }))}
+            placeholder={
+              productGroupId === null
+                ? "Zuerst Warengruppe wählen"
+                : subgroupsOfGroup.length === 0
+                  ? "Keine Warenuntergruppen vorhanden"
+                  : "Warenuntergruppe wählen"
+            }
+            disabled={subgroupsOfGroup.length === 0}
+          />
+        </FormField>
 
-      <FormField label="Preis (CHF) *" htmlFor="article-price" error={errors.price}>
-        <Input
-          id="article-price"
-          type="text"
-          inputMode="decimal"
-          value={price}
-          onChange={(e) => {
-            setPrice(e.target.value);
-            clearError("price");
-          }}
-          placeholder="0.00"
-        />
-      </FormField>
+        <div className="form-grid-full">
+          <FormField label="Beschrieb (optional)" htmlFor="article-description">
+            <Textarea
+              id="article-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+            />
+          </FormField>
+        </div>
 
-      <FormField label="Bestand" htmlFor="article-stock">
-        <Input
-          id="article-stock"
-          type="text"
-          inputMode="numeric"
-          value={stock}
-          onChange={(e) => setStock(parseNumericInput(e.target.value, stock))}
-        />
-      </FormField>
+        <FormField label="Preis (CHF) *" htmlFor="article-price" error={errors.price}>
+          <Input
+            id="article-price"
+            type="text"
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              clearError("price");
+            }}
+            placeholder="0.00"
+          />
+        </FormField>
+
+        <FormField label="Aktions-Rabatt in % (optional)" htmlFor="article-discount" error={errors.discount}>
+          <Input
+            id="article-discount"
+            type="text"
+            inputMode="decimal"
+            value={discount}
+            onChange={(e) => {
+              setDiscount(e.target.value);
+              clearError("discount");
+            }}
+            placeholder="z.B. 20"
+          />
+        </FormField>
+
+        <FormField label="Bestand" htmlFor="article-stock">
+          <Input
+            id="article-stock"
+            type="text"
+            inputMode="numeric"
+            value={stock}
+            onChange={(e) => setStock(parseNumericInput(e.target.value, stock))}
+          />
+        </FormField>
+
+        {/* Flags next to the stock, lined up with its input below the label. */}
+        <div className="form-grid-checkboxes">
+          <div className="form-field form-field-row">
+            <Checkbox id="article-discontinued" checked={discontinued} onCheckedChange={setDiscontinued} />
+            <label htmlFor="article-discontinued">Auslaufend</label>
+          </div>
+          <div className="form-field form-field-row">
+            <Checkbox id="article-is-finishing" checked={isFinishing} onCheckedChange={setIsFinishing} />
+            <label htmlFor="article-is-finishing">Veredelung</label>
+          </div>
+          {initial && (
+            <div className="form-field form-field-row">
+              <Checkbox id="article-active" checked={active} onCheckedChange={setActive} />
+              <label htmlFor="article-active">Aktiv</label>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="form-field">
         <span className="field-label">Veredelungen</span>
-        <p className="muted">Andere Artikel, die diesem Artikel als Veredelung zugeordnet werden.</p>
+        <p className="muted">Als Veredelung markierte Artikel, die diesem Artikel zugeordnet werden.</p>
 
         {selectedComponents.length > 0 && (
           <div className="finishing-picker">
@@ -279,7 +333,7 @@ export function ArticleForm({
               <div key={component.id} className="finishing-picker-row">
                 <span className="finishing-picker-label">
                   {component.name}
-                  {component.patternNumber ? ` (${component.patternNumber})` : ""}
+                  {component.internalNumber ? ` (${component.internalNumber})` : ""}
                 </span>
                 <Input
                   type="text"
@@ -315,6 +369,9 @@ export function ArticleForm({
             ))}
           </ul>
         )}
+        {componentQuery.trim() && componentMatches.length === 0 && (
+          <p className="muted">Keine passende Veredelung. Nur Artikel mit „Veredelung“ können zugeordnet werden.</p>
+        )}
       </div>
 
       <p className="finishing-total-preview">
@@ -326,20 +383,6 @@ export function ArticleForm({
           </span>
         )}
       </p>
-
-      <FormField label="Aktions-Rabatt in % (optional)" htmlFor="article-discount" error={errors.discount}>
-        <Input
-          id="article-discount"
-          type="text"
-          inputMode="decimal"
-          value={discount}
-          onChange={(e) => {
-            setDiscount(e.target.value);
-            clearError("discount");
-          }}
-          placeholder="z.B. 20"
-        />
-      </FormField>
       {discountPercent !== null && discountPercent > 0 && (
         <p className="finishing-total-preview">
           Aktionspreis: <strong>{formatChf(salePriceCents)} CHF</strong>{" "}
@@ -347,18 +390,6 @@ export function ArticleForm({
             (statt {formatChf(totalPriceCents)} CHF, −{formatPercent(discountPercent)})
           </span>
         </p>
-      )}
-
-      <div className="form-field form-field-row">
-        <Checkbox id="article-discontinued" checked={discontinued} onCheckedChange={setDiscontinued} />
-        <label htmlFor="article-discontinued">Auslaufend</label>
-      </div>
-
-      {initial && (
-        <div className="form-field form-field-row">
-          <Checkbox id="article-active" checked={active} onCheckedChange={setActive} />
-          <label htmlFor="article-active">Aktiv</label>
-        </div>
       )}
 
       {errorMessage && <p className="field-error">{errorMessage}</p>}

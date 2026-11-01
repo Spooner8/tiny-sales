@@ -57,12 +57,29 @@ pub struct Sale {
     pub change_cents: Option<i64>,
 }
 
+/// One row of the sales list: a sale, or a return booked against one. A
+/// return has a negative total, so the list adds up to the net revenue.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaleListEntry {
+    pub sale_id: i64,
+    /// Set for returns.
+    pub return_id: Option<i64>,
+    pub timestamp: String,
+    /// For returns: how the money was refunded.
+    pub payment_method: PaymentMethod,
+    pub total_cents: i64,
+    pub pickup_number: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct SaleItemDetail {
     pub article_id: i64,
     pub article_code: String,
     pub article_name: String,
+    /// The article's current internal number ("Interne Nr.").
+    pub article_internal_number: Option<String>,
     pub quantity: i64,
     /// Regular unit price before the article promotion.
     pub list_price_cents: i64,

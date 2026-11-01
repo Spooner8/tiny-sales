@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "../components/atoms/Button";
+import { Modal } from "../components/molecules/Modal";
 import { PageHeader } from "../components/molecules/PageHeader";
 import { ShowInactiveToggle } from "../components/molecules/ShowInactiveToggle";
 import { ArticleForm } from "../components/organisms/ArticleForm";
@@ -51,24 +52,31 @@ export function ArticlePage() {
     <section>
       <PageHeader title="Artikel" action={<Button onClick={() => setEditing("new")}>Neuer Artikel</Button>} />
 
-      {editing && productGroups && productSubgroups && articles && (
-        <ArticleForm
-          initial={editing === "new" ? undefined : editing}
-          productGroups={activeProductGroups}
-          productSubgroups={activeProductSubgroups}
-          articles={articles}
-          submitting={activeMutation.isPending}
-          errorMessage={activeMutation.error?.message}
-          onCancel={closeForm}
-          onSubmit={(values) => {
-            const action =
-              editing === "new"
-                ? createMutation.mutateAsync(values)
-                : updateMutation.mutateAsync({ id: editing.id, ...values });
-            action.then(closeForm).catch(() => {});
-          }}
-        />
-      )}
+      <Modal
+        open={editing !== null}
+        title={editing === "new" ? "Neuer Artikel" : "Artikel bearbeiten"}
+        onClose={closeForm}
+        size="lg"
+      >
+        {editing && productGroups && productSubgroups && articles && (
+          <ArticleForm
+            initial={editing === "new" ? undefined : editing}
+            productGroups={activeProductGroups}
+            productSubgroups={activeProductSubgroups}
+            articles={articles}
+            submitting={activeMutation.isPending}
+            errorMessage={activeMutation.error?.message}
+            onCancel={closeForm}
+            onSubmit={(values) => {
+              const action =
+                editing === "new"
+                  ? createMutation.mutateAsync(values)
+                  : updateMutation.mutateAsync({ id: editing.id, ...values });
+              action.then(closeForm).catch(() => {});
+            }}
+          />
+        )}
+      </Modal>
 
       {isLoading && <p>Wird geladen...</p>}
 

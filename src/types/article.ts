@@ -2,7 +2,7 @@ export interface ArticleComponentDetail {
   componentArticleId: number;
   code: string;
   name: string;
-  patternNumber: string | null;
+  internalNumber: string | null;
   priceCents: number;
 }
 
@@ -12,7 +12,11 @@ export interface Article {
   name: string;
   productGroupId: number;
   productSubgroupId: number;
-  patternNumber: string | null;
+  /** Shown as "Interne Nr." */
+  internalNumber: string | null;
+  description: string | null;
+  /** Only finishings can be attached to other articles as components. */
+  isFinishing: boolean;
   priceCents: number;
   stock: number;
   active: boolean;
@@ -37,7 +41,9 @@ export interface NewArticle {
   name: string;
   productGroupId: number;
   productSubgroupId: number;
-  patternNumber: string | null;
+  internalNumber: string | null;
+  description: string | null;
+  isFinishing: boolean;
   priceCents: number;
   stock: number;
   discontinued: boolean;
@@ -50,7 +56,9 @@ export interface UpdateArticle {
   name: string;
   productGroupId: number;
   productSubgroupId: number;
-  patternNumber: string | null;
+  internalNumber: string | null;
+  description: string | null;
+  isFinishing: boolean;
   priceCents: number;
   stock: number;
   active: boolean;

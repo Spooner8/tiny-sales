@@ -21,7 +21,7 @@ export function SalesPage() {
   const [to, setTo] = useState(todayIso());
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const { data: sales, isLoading } = useSalesQuery(from, to);
+  const { data: entries, isLoading } = useSalesQuery(from, to);
   const { data: saleDetail } = useSaleQuery(selectedId);
   const { data: returns } = useSaleReturnsQuery(selectedId);
   const createReturn = useCreateSaleReturn();
@@ -35,7 +35,7 @@ export function SalesPage() {
       {/* Always rendered: the date range lives in its toolbar and must stay
           usable while a new range is loading. */}
       <SalesTable
-        sales={sales ?? []}
+        entries={entries ?? []}
         selectedId={selectedId}
         onSelect={setSelectedId}
         toolbar={
