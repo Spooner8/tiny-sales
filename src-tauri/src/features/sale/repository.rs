@@ -94,10 +94,11 @@ impl SaleListRow {
     }
 }
 
-/// Customer and invoice of sales that completed a customer order.
+/// The order, customer and invoice of a sale. The customer is the one
+/// assigned to the sale afterwards, or that of its order.
 const SALE_ORDER_JOINS: &str = "
     LEFT JOIN customer_order ON customer_order.sale_id = sale.id
-    LEFT JOIN customer ON customer.id = customer_order.customer_id
+    LEFT JOIN customer ON customer.id = COALESCE(sale.customer_id, customer_order.customer_id)
     LEFT JOIN invoice ON invoice.sale_id = sale.id";
 
 pub const CUSTOMER_NAME_SQL: &str =
@@ -192,8 +193,9 @@ impl SaleRepository {
              SELECT sale_return.sale_id, sale_return.id, sale_return.timestamp, sale_return.refund_method,
                     -sale_return.total_refund_cents, NULL, {CUSTOMER_NAME_SQL}, customer.company, NULL, NULL
              FROM sale_return
+             JOIN sale ON sale.id = sale_return.sale_id
              LEFT JOIN customer_order ON customer_order.sale_id = sale_return.sale_id
-             LEFT JOIN customer ON customer.id = customer_order.customer_id
+             LEFT JOIN customer ON customer.id = COALESCE(sale.customer_id, customer_order.customer_id)
              WHERE date(sale_return.timestamp) BETWEEN ?1 AND ?2
              ORDER BY timestamp DESC, return_id DESC"
         ))
@@ -203,6 +205,15 @@ impl SaleRepository {
         .await?;
 
         rows.into_iter().map(SaleListRow::into_domain).collect()
+    }
+
+    pub async fn set_customer(pool: &SqlitePool, id: i64, customer_id: Option<i64>) -> Result<(), AppError> {
+        sqlx::query("UPDATE sale SET customer_id = ? WHERE id = ?")
+            .bind(customer_id)
+            .bind(id)
+            .execute(pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn find_with_items(pool: &SqlitePool, id: i64) -> Result<Option<SaleWithItems>, AppError> {

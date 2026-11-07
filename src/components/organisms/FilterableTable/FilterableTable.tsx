@@ -22,6 +22,8 @@ export interface FilterableTableProps<TData> {
   searchPlaceholder?: string;
   /** Extra controls shown next to the search, e.g. a date range or a toggle. */
   toolbar?: ReactNode;
+  /** Replaces the plain text match of the search; called per searchable column. */
+  searchFn?: FilterFn<TData>;
 }
 
 /**
@@ -43,6 +45,7 @@ export function FilterableTable<TData>({
   columns,
   searchPlaceholder = "Suchen...",
   toolbar,
+  searchFn,
 }: FilterableTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -54,7 +57,7 @@ export function FilterableTable<TData>({
     state: { globalFilter, columnFilters },
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
-    globalFilterFn: "includesString",
+    globalFilterFn: searchFn ?? "includesString",
     getColumnCanGlobalFilter: (column) => column.columnDef.meta?.searchable === true,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

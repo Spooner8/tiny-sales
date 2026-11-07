@@ -29,6 +29,12 @@ impl CompanyProfileService {
         if !(0.0..=100.0).contains(&input.vat_rate_percent) {
             return Err(AppError::Validation("MWST-Satz muss zwischen 0 und 100 % liegen".into()));
         }
+        if !(0..=365).contains(&input.reminder_payment_days) {
+            return Err(AppError::Validation("Zahlungsfrist für Mahnungen muss zwischen 0 und 365 Tagen liegen".into()));
+        }
+        if input.reminder_fee_cents < 0 {
+            return Err(AppError::Validation("Mahngebühr darf nicht negativ sein".into()));
+        }
         let profile = CompanyProfile {
             name: input.name.trim().to_string(),
             street: input.street.trim().to_string(),
@@ -43,6 +49,8 @@ impl CompanyProfileService {
             iban: qr_bill::format_iban(&iban),
             invoice_payment_days: input.invoice_payment_days,
             vat_rate_percent: input.vat_rate_percent,
+            reminder_payment_days: input.reminder_payment_days,
+            reminder_fee_cents: input.reminder_fee_cents,
         };
         CompanyProfileRepository::save(pool, &profile).await?;
         Ok(profile)

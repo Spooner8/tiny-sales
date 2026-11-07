@@ -17,7 +17,10 @@ export interface CompanyProfileFormProps {
   onChange?: () => void;
 }
 
-type TextField = Exclude<keyof CompanyProfile, "logo" | "logoMark" | "invoicePaymentDays" | "vatRatePercent">;
+type TextField = Exclude<
+  keyof CompanyProfile,
+  "logo" | "logoMark" | "invoicePaymentDays" | "vatRatePercent" | "reminderPaymentDays" | "reminderFeeCents"
+>;
 
 const TEXT_FIELDS: { key: TextField; label: string; placeholder: string }[] = [
   { key: "name", label: "Firmenname", placeholder: "z.B. Muster GmbH" },
@@ -46,6 +49,12 @@ export function CompanyProfileForm({
   // Empty means no VAT; up to two decimals, e.g. 8.1 or 2,6.
   const vatRateValid = vatRate.trim() === "" || /^\d{1,2}([.,]\d{1,2})?$/.test(vatRate.trim());
 
+  const [reminderDays, setReminderDays] = useState(String(initial.reminderPaymentDays));
+  const reminderDaysValid = /^\d{1,3}$/.test(reminderDays.trim());
+  const [reminderFee, setReminderFee] = useState((initial.reminderFeeCents / 100).toFixed(2));
+  // Empty means no fee.
+  const reminderFeeValid = reminderFee.trim() === "" || /^\d+([.,]\d{1,2})?$/.test(reminderFee.trim());
+
   function update(change: Partial<CompanyProfile>) {
     setValues((prev) => ({ ...prev, ...change }));
     onChange?.();
@@ -53,11 +62,13 @@ export function CompanyProfileForm({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!paymentDaysValid || !vatRateValid) return;
+    if (!paymentDaysValid || !vatRateValid || !reminderDaysValid || !reminderFeeValid) return;
     onSubmit({
       ...values,
       invoicePaymentDays: Number(paymentDays.trim()),
       vatRatePercent: vatRate.trim() ? Number.parseFloat(vatRate.trim().replace(",", ".")) : 0,
+      reminderPaymentDays: Number(reminderDays.trim()),
+      reminderFeeCents: reminderFee.trim() ? Math.round(Number.parseFloat(reminderFee.trim().replace(",", ".")) * 100) : 0,
     });
   }
 
@@ -88,6 +99,36 @@ export function CompanyProfileForm({
               onChange?.();
             }}
             placeholder="z.B. 8.1"
+          />
+        </FormField>
+        <FormField
+          label="Zahlungsfrist für Mahnungen (Tage)"
+          htmlFor="company-reminder-days"
+          error={reminderDaysValid ? null : "Bitte eine Anzahl Tage eingeben, z.B. 10"}
+        >
+          <Input
+            id="company-reminder-days"
+            inputMode="numeric"
+            value={reminderDays}
+            onChange={(e) => {
+              setReminderDays(e.target.value);
+              onChange?.();
+            }}
+          />
+        </FormField>
+        <FormField
+          label="Mahngebühr pro Mahnung (CHF, Zahlungserinnerung gratis)"
+          htmlFor="company-reminder-fee"
+          error={reminderFeeValid ? null : "Bitte einen Betrag wie 20.00 eingeben"}
+        >
+          <Input
+            id="company-reminder-fee"
+            inputMode="decimal"
+            value={reminderFee}
+            onChange={(e) => {
+              setReminderFee(e.target.value);
+              onChange?.();
+            }}
           />
         </FormField>
         <FormField

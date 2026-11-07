@@ -74,7 +74,7 @@ export function OrderCheckoutPage() {
     return (
       <section>
         <PageHeader title={title} />
-        <p>Dieser Auftrag ist bereits abgeschlossen (Beleg-Nr. {formatReceiptNumber(order.saleId)}).</p>
+        <p>Dieser Auftrag ist bereits abgerechnet (Beleg-Nr. {formatReceiptNumber(order.saleId)}).</p>
       </section>
     );
   }
@@ -120,7 +120,7 @@ export function OrderCheckoutPage() {
           onDiscountDraftChange={setDiscountDraft}
           paymentMethods={CHECKOUT_PAYMENT_METHODS}
           initialPaymentMethod={paidAtCheckout(order.paymentMethod) ? order.paymentMethod : "Cash"}
-          confirmLabel="Auftrag abschliessen"
+          confirmLabel="Auftrag abrechnen"
           submitting={completeOrder.isPending}
           errorMessage={completeOrder.error?.message}
           onConfirm={handleConfirm}

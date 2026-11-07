@@ -27,6 +27,7 @@ import { confirmAction } from "../lib/confirm";
 import {
   formatDate,
   lineFromArticle,
+  openPointsOfOrder,
   lineFromOrderItem,
   orderTotals,
   saleDiscountDraft,
@@ -39,6 +40,7 @@ import type { Article } from "../types/article";
 import { customerLabel } from "../types/customer";
 import type { Customer } from "../types/customer";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "../types/customerOrder";
+import { formatInvoiceNumber } from "../types/invoice";
 import type { CustomerOrder, OrderStatus, SaveCustomerOrder } from "../types/customerOrder";
 import { formatReceiptNumber, ORDER_PAYMENT_METHODS, PAYMENT_METHOD_LABELS, paidAtCheckout } from "../types/sale";
 import type { PaymentMethod } from "../types/sale";
@@ -242,7 +244,7 @@ function OrderEditor({ order, customers, articles }: OrderEditorProps) {
     }
     const confirmed = await confirmAction(
       `Rechnung über ${formatChf(current.totalCents)} CHF an ${customerLabel(current.customerName, current.customerCompany)} erstellen?\n\n` +
-        "Der Auftrag wird damit abgeschlossen und kann nicht mehr geändert werden.",
+        "Der Auftrag ist damit abgerechnet und kann nicht mehr geändert werden. Er bleibt offen, bis er geliefert und bezahlt ist.",
       "Rechnung erstellen",
     );
     if (!confirmed) return;
@@ -304,12 +306,13 @@ function OrderEditor({ order, customers, articles }: OrderEditorProps) {
 
       {order?.saleId != null && (
         <div className="order-completed">
-          Abgeschlossen mit Beleg-Nr. {formatReceiptNumber(order.saleId)} ({PAYMENT_METHOD_LABELS[order.paymentMethod]}).
+          Abgerechnet mit Beleg-Nr. {formatReceiptNumber(order.saleId)} ({PAYMENT_METHOD_LABELS[order.paymentMethod]}).
           {order.invoiceId !== null && (
             <Link to="/invoices/$invoiceId" params={{ invoiceId: String(order.invoiceId) }}>
-              Rechnung {order.invoiceId} anzeigen
+              Rechnung {formatInvoiceNumber(order.invoiceId)} anzeigen
             </Link>
           )}
+          <strong>{order.done ? "Erledigt" : `Noch offen: ${openPointsOfOrder(order)}`}</strong>
         </div>
       )}
 
@@ -398,7 +401,7 @@ function OrderEditor({ order, customers, articles }: OrderEditorProps) {
               disabled={busy || lines.length === 0}
               onClick={() => void handleComplete()}
             >
-              {paidAtCheckout(paymentMethod) ? "Abschliessen an der Kasse" : "Abschliessen mit Rechnung"}
+              {paidAtCheckout(paymentMethod) ? "An der Kasse abrechnen" : "Rechnung erstellen"}
             </Button>
             {order && (
               <Button type="button" variant="danger" disabled={busy} onClick={() => void handleDelete()}>

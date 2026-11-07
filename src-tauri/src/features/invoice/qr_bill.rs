@@ -168,11 +168,31 @@ fn with_check_digit(digits: &str) -> String {
     format!("{digits}{}", (10 - carry) % 10)
 }
 
-/// Creditor reference after ISO 11649: "RF", two check digits, the number.
+/// Invoice numbers have five digits: invoice 1 is "00001".
+pub fn invoice_number(id: i64) -> String {
+    format!("{id:05}")
+}
+
+/// Creditor reference after ISO 11649: "RF", two check digits, the invoice
+/// number.
 pub fn creditor_reference(number: i64) -> String {
-    let reference = number.to_string();
+    creditor_reference_of(&invoice_number(number))
+}
+
+fn creditor_reference_of(reference: &str) -> String {
     let check = 98 - mod97(&format!("{reference}RF00"));
     format!("RF{check:02}{reference}")
+}
+
+/// Every reference a payment for this invoice can carry, without spaces, to
+/// find the invoice from a bank statement. Invoices issued before numbers had
+/// five digits carry the short form.
+pub fn reference_search_terms(iban: &str, number: i64) -> String {
+    let mut terms = vec![creditor_reference(number), creditor_reference_of(&number.to_string())];
+    if is_qr_iban(iban) {
+        terms.push(qr_reference(number));
+    }
+    terms.join(" ")
 }
 
 /// "8000 Zürich" into postal code and city.
@@ -251,6 +271,18 @@ mod tests {
         // Example from ISO 11649.
         assert_eq!(creditor_reference(539007547034), "RF18539007547034");
         assert_eq!(Reference::Creditor(creditor_reference(539007547034)).formatted(), "RF18 5390 0754 7034");
+        // Five digits don't change the check digits of the short form.
+        assert_eq!(creditor_reference(3), "RF2000003");
+        assert_eq!(Reference::Creditor(creditor_reference(3)).formatted(), "RF20 0000 3");
+    }
+
+    #[test]
+    fn invoice_is_found_by_every_reference_it_can_carry() {
+        assert_eq!(reference_search_terms("CH9300762011623852957", 3), "RF2000003 RF203");
+        assert_eq!(
+            reference_search_terms("CH4431999123000889012", 42),
+            "RF3400042 RF3442 000000000000000000000000420"
+        );
     }
 
     #[test]

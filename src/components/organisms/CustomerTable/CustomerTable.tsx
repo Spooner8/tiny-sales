@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Badge } from "../../atoms/Badge";
 import { Button } from "../../atoms/Button";
 import { FilterableTable } from "../FilterableTable";
-import { countryName, customerAddressLine } from "../../../types/customer";
+import { countryName } from "../../../types/customer";
 import type { Customer } from "../../../types/customer";
 
 export interface CustomerTableProps {
@@ -36,9 +36,15 @@ export function CustomerTable({ customers, onEdit, onDeactivate, toolbar }: Cust
       header: "Vorname",
       meta: { searchable: true },
     }),
-    columnHelper.accessor(customerAddressLine, {
+    columnHelper.accessor((c) => c.street ?? "", {
       id: "address",
       header: "Adresse",
+      cell: ({ getValue }) => getValue() || "–",
+      meta: { searchable: true },
+    }),
+    columnHelper.accessor((c) => c.postalCode ?? "", {
+      id: "postalCode",
+      header: "PLZ",
       cell: ({ getValue }) => getValue() || "–",
       meta: { searchable: true },
     }),
@@ -46,7 +52,7 @@ export function CustomerTable({ customers, onEdit, onDeactivate, toolbar }: Cust
       id: "city",
       header: "Ort",
       cell: ({ getValue }) => getValue() || "–",
-      meta: { filterable: true },
+      meta: { searchable: true, filterable: true },
     }),
     columnHelper.accessor((c) => countryName(c.country), {
       id: "country",
@@ -97,7 +103,7 @@ export function CustomerTable({ customers, onEdit, onDeactivate, toolbar }: Cust
     <FilterableTable
       data={customers}
       columns={columns}
-      searchPlaceholder="Kunden suchen (Name, Firma, Adresse, Telefon, E-Mail...)"
+      searchPlaceholder="Kunden suchen (Name, Firma, Adresse, PLZ, Ort, Telefon, E-Mail...)"
       toolbar={toolbar}
     />
   );
