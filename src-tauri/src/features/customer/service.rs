@@ -44,7 +44,7 @@ impl CustomerService {
         CustomerRepository::deactivate(pool, id).await
     }
 
-    fn normalize(input: NewCustomer) -> Result<NewCustomer, AppError> {
+    pub fn normalize(input: NewCustomer) -> Result<NewCustomer, AppError> {
         let first_name = input.first_name.trim().to_string();
         let last_name = input.last_name.trim().to_string();
         if first_name.is_empty() {
@@ -121,7 +121,7 @@ impl CustomerService {
 }
 
 /// Compared without case and extra spaces, so "anna  muster" is "Anna Muster".
-fn duplicate_key(first_name: &str, last_name: &str, additional_info: Option<&str>) -> [String; 3] {
+pub fn duplicate_key(first_name: &str, last_name: &str, additional_info: Option<&str>) -> [String; 3] {
     let normalize = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
     [normalize(first_name), normalize(last_name), normalize(additional_info.unwrap_or(""))]
 }

@@ -31,6 +31,8 @@ sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runti
 tokio = { version = "1", features = ["sync", "rt-multi-thread"] }
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
+rust_xlsxwriter = "0.102.0"
+calamine = "0.38.0"
 
 # Printing invoices to PDF through WebView2 (src/pdf.rs); versions as used by tauri.
 [target.'cfg(windows)'.dependencies]

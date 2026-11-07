@@ -1,4 +1,4 @@
-use sqlx::SqlitePool;
+use sqlx::{Executor, Sqlite, SqlitePool};
 
 use crate::error::AppError;
 
@@ -26,7 +26,7 @@ impl CustomerRepository {
         Ok(customer)
     }
 
-    pub async fn create(pool: &SqlitePool, input: &NewCustomer) -> Result<i64, AppError> {
+    pub async fn create<'e>(executor: impl Executor<'e, Database = Sqlite>, input: &NewCustomer) -> Result<i64, AppError> {
         let id = sqlx::query(
             "INSERT INTO customer (first_name, last_name, street, postal_code, city, country, phone, mobile, email, gender, company, note, additional_info)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -44,13 +44,18 @@ impl CustomerRepository {
         .bind(&input.company)
         .bind(&input.note)
         .bind(&input.additional_info)
-        .execute(pool)
+        .execute(executor)
         .await?
         .last_insert_rowid();
         Ok(id)
     }
 
-    pub async fn update(pool: &SqlitePool, id: i64, active: bool, input: &NewCustomer) -> Result<(), AppError> {
+    pub async fn update<'e>(
+        executor: impl Executor<'e, Database = Sqlite>,
+        id: i64,
+        active: bool,
+        input: &NewCustomer,
+    ) -> Result<(), AppError> {
         sqlx::query(
             "UPDATE customer
              SET first_name = ?, last_name = ?, street = ?, postal_code = ?, city = ?, country = ?, phone = ?, mobile = ?, email = ?,
@@ -72,7 +77,7 @@ impl CustomerRepository {
         .bind(&input.additional_info)
         .bind(active)
         .bind(id)
-        .execute(pool)
+        .execute(executor)
         .await?;
         Ok(())
     }

@@ -12,17 +12,18 @@ Tiny Sales is made for Switzerland: prices are in CHF, cash amounts are rounded 
 - **Open sales:** leave a started sale open and serve another customer in between. Articles in open sales are reserved, and stock is deducted only when the sale is completed.
 - **Customers and orders:** take orders for customers in advance, with a note per line (e.g. the name to print) and a production status (open, material to order, material ordered, ready for production, produced, delivered). Prices are fixed when a line is added. An order is billed at the checkout (cash, TWINT, card; also via **Auftrag abrechnen** in the checkout) or, when paid by invoice, by issuing an invoice. Billing books the sale, so it shows in the sales history and statistics and deducts the stock; orders don't reserve stock before that. A billed order stays open under **Aufträge** until it is delivered and paid, or fully returned.
 - **Invoices:** a Swiss QR-bill on A4 with the QR payment part (QR reference for a QR-IBAN, creditor reference otherwise). The PDF is created once when the invoice is issued and stored in the database, so it can be opened or saved unchanged at any time later. Invoice numbers have five digits, and the payment reference is built from them. **Rechnungen** lists the invoices with their reference and status and marks overdue ones in the menu. Its search finds a reference as it appears in e-banking, with or without spaces.
-- **Reminders:** an overdue invoice gets a payment reminder, then a first and a second dunning letter, each with a new deadline and a QR payment part for what is still owed, stored as a PDF like the invoice. The next one is possible once the deadline has passed. Deadline and fee per dunning letter are set under **Einstellungen → Firma**; the payment reminder is free. Fees aren't booked as revenue.
+- **Reminders:** an overdue invoice gets a payment reminder, then a first and a second dunning letter, each with a new deadline and a QR payment part for what is still owed, stored as a PDF like the invoice. The next one is possible once the deadline has passed. Deadline and fee per dunning letter are set under **Einstellungen → Belege & Rechnungen**; the payment reminder is free. Fees aren't booked as revenue.
 - **Articles:** product groups and subgroups, an internal number (also printed on receipts), finishings that can be attached to other articles, promotions and stock levels.
 - **Sales history:** every completed sale, including completed orders with their customer and invoice, with full or partial returns. A sale without a customer can get one assigned afterwards in its details. A return is listed as its own entry with a negative total and the receipt number `R-<receipt number>`, so the list adds up to the net revenue. Receipt numbers have five digits (e.g. `00042`). Returns are refunded in cash, by TWINT, card or bank transfer.
+- **Excel import:** under **Einstellungen → Daten**, articles and customers can be exported to an Excel file (`.xlsx`), which also serves as the template, edited in Excel or LibreOffice and imported again (`.xlsx` or `.ods`), also for changing many entries at once. Before anything is written, the app shows all changes; a file with an error isn't imported at all. Nothing is ever deleted. Each row is one article with its own number and stock. Product subgroups are assigned by the IDs listed on a sheet of the article file.
 - **Labels:** print QR code labels on configurable label sheets.
 - **Statistics:** revenue by day, product group and article.
-- **Settings:** company details and logo for receipts, backup and restore, a test mode with a separate database, and light and dark themes.
+- **Settings:** four tabs. **Firma**: company details and logo. **Belege & Rechnungen**: receipt paper size and texts, VAT rate, IBAN, payment terms and dunning fee. **Daten**: Excel import and export, backup and restore, choice of database. **System**: light and dark themes, updates and a test mode with a separate database.
 - **Updates:** the app updates itself from GitHub releases and backs up the database before its schema changes.
 
 ## Getting started
 
-On first launch, open **Einstellungen → Firma** (Settings → Company). Enter your company name, address, VAT number and logo. These details are printed on receipts and stored in the database; the source code contains no company data. Prices are always entered including VAT: set the VAT rate there too, and receipts and invoices show the VAT contained in the total. A changed rate applies to sales and orders completed from then on; existing receipts and invoices keep theirs. For invoices, also enter the IBAN (or QR-IBAN) and the payment term, and write postal code and city as "8000 Zürich": the QR payment part needs them separately.
+On first launch, open **Einstellungen → Firma** (Settings → Company). Enter your company name, address, VAT number and logo. These details are printed on receipts and stored in the database; the source code contains no company data. Write postal code and city as "8000 Zürich": the QR payment part of invoices needs them separately. Then open **Einstellungen → Belege & Rechnungen**. Prices are always entered including VAT: set the VAT rate there, and receipts and invoices show the VAT contained in the total. A changed rate applies to sales and orders completed from then on; existing receipts and invoices keep theirs. For invoices, also enter the IBAN (or QR-IBAN) and the payment term.
 
 The database is stored in `%APPDATA%\ch.swen-loeffler.tinysales\` by default. You can choose a different location in the settings.
 
@@ -62,7 +63,7 @@ Rules for new migrations, so updates never break existing data:
 
 ## Releases and updates
 
-Installed apps check GitHub for a new release at startup (and on demand under **Einstellungen → Updates**), then download, verify and install it, and restart.
+Installed apps check GitHub for a new release at startup (and on demand under **Einstellungen → System**), then download, verify and install it, and restart.
 
 One-time setup:
 

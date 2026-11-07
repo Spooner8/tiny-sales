@@ -256,7 +256,7 @@ impl InvoiceService {
     fn creditor(profile: &CompanyProfile) -> Result<(String, QrAddress), AppError> {
         let missing = |what: &str| {
             AppError::Validation(format!(
-                "Für Rechnungen fehlt im Firmenprofil (Einstellungen → Firma): {what}"
+                "Für Rechnungen fehlt in den Einstellungen: {what}"
             ))
         };
         if profile.name.trim().is_empty() {

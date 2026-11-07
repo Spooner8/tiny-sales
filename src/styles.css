@@ -1563,28 +1563,50 @@
   }
 }
 
-/* Settings page: two columns of equal width, each at least about 10 %
-   narrower than the cards' former fixed width; below that the page scrolls
-   sideways. The left column starts with two small cards side by side. */
-.settings-layout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(700px, 1fr));
-  gap: 24px;
-  align-items: start;
+/* ---- Tabs ---- */
+
+.tabs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
 }
 
-.settings-layout-column {
-  min-width: 0;
+.tabs-tab {
+  /* Lies on the list's border, so the active tab's line replaces it. */
+  margin-bottom: -1px;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
 }
 
-.settings-layout-pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+.tabs-tab:hover {
+  color: var(--foreground);
 }
 
-.settings-layout .settings-section {
-  max-width: none;
+.tabs-tab[data-active] {
+  border-bottom-color: var(--primary);
+  color: var(--foreground);
+}
+
+/* Base UI hides a panel only after a possible closing animation. There is
+   none, but without this both panels are on screen for a moment. */
+.tabs-panel[data-ending-style] {
+  display: none;
+}
+
+.settings-subheading {
+  margin: 4px 0 -6px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 /* Shown instead of the app when the database couldn't be opened. */
@@ -2207,4 +2229,53 @@
     /* One sheet, a hair less so rounding can't add an empty page. */
     height: 296.5mm;
   }
+}
+
+/* ---- Excel import ---- */
+
+.excel-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.excel-exchange-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.excel-exchange-label {
+  min-width: 70px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.excel-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.excel-preview p {
+  margin: 0;
+}
+
+.excel-preview-title {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Also a file with a thousand rows stays manageable. */
+.excel-preview-list {
+  max-height: 30vh;
+  margin: 0;
+  padding: 8px 12px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--muted);
+  border-radius: var(--radius-md);
 }
