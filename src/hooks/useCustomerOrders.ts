@@ -29,7 +29,11 @@ export function useSetCustomerOrderStatus() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: OrderStatus }) => customerOrderApi.setStatus(id, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CUSTOMER_ORDERS_KEY }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CUSTOMER_ORDERS_KEY });
+      // The invoice overview shows the order's status.
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    },
   });
 }
 
@@ -49,6 +53,7 @@ export function useCompleteCustomerOrder() {
       queryClient.invalidateQueries({ queryKey: CUSTOMER_ORDERS_KEY });
       queryClient.invalidateQueries({ queryKey: ["articles"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
   });
 }

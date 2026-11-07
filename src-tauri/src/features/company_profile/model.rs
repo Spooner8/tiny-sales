@@ -25,4 +25,8 @@ pub struct CompanyProfile {
     pub invoice_payment_days: i64,
     /// VAT rate for new sales in percent; 0 shows no VAT.
     pub vat_rate_percent: f64,
+    /// Payment term of reminders in days.
+    pub reminder_payment_days: i64,
+    /// Fee per dunning letter; the payment reminder itself is free.
+    pub reminder_fee_cents: i64,
 }

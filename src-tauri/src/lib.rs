@@ -94,11 +94,17 @@ pub fn run() {
             features::customer_order::commands::set_customer_order_status,
             features::customer_order::commands::delete_customer_order,
             features::customer_order::commands::complete_customer_order,
+            features::invoice::commands::list_invoices,
             features::invoice::commands::get_invoice,
             features::invoice::commands::store_invoice_pdf,
             features::invoice::commands::open_invoice_pdf,
             features::invoice::commands::save_invoice_pdf,
             features::invoice::commands::set_invoice_paid_on,
+            features::invoice::commands::create_invoice_reminder,
+            features::invoice::commands::get_invoice_reminder,
+            features::invoice::commands::store_invoice_reminder_pdf,
+            features::invoice::commands::open_invoice_reminder_pdf,
+            features::invoice::commands::save_invoice_reminder_pdf,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -51,6 +51,10 @@ export function useCreateSaleReturn() {
       queryClient.invalidateQueries({ queryKey: ["saleReturns", variables.saleId] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["articles"] });
+      // A return lowers what an invoice is owed and can finish its order.
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice"] });
+      queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
     },
   });
 }

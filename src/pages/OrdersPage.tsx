@@ -11,9 +11,10 @@ export function OrdersPage() {
   const navigate = useNavigate();
   const { data: orders, isLoading } = useCustomerOrdersQuery();
   const setStatus = useSetCustomerOrderStatus();
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [showDone, setShowDone] = useState(false);
 
-  const visibleOrders = (orders ?? []).filter((o) => showCompleted || o.saleId === null);
+  // A billed order stays here until it is delivered and paid.
+  const visibleOrders = (orders ?? []).filter((o) => showDone || !o.done);
 
   function openOrder(id: number | "new") {
     void navigate({ to: "/orders/$orderId", params: { orderId: String(id) } });
@@ -32,8 +33,8 @@ export function OrdersPage() {
           onChangeStatus={(order, status) => setStatus.mutate({ id: order.id, status })}
           toolbar={
             <div className="show-inactive-toggle">
-              <Checkbox id="show-completed" checked={showCompleted} onCheckedChange={setShowCompleted} />
-              <label htmlFor="show-completed">Auch abgeschlossene anzeigen</label>
+              <Checkbox id="show-done" checked={showDone} onCheckedChange={setShowDone} />
+              <label htmlFor="show-done">Auch erledigte anzeigen</label>
             </div>
           }
         />

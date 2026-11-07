@@ -7,12 +7,19 @@ use crate::features::customer::model::Customer;
 use crate::features::customer::repository::CustomerRepository;
 use crate::features::sale::repository::SaleRepository;
 
-use super::model::{InvoiceAddress, InvoiceDetail, InvoicePayment};
+use super::model::{
+    InvoiceAddress, InvoiceDetail, InvoiceOverview, InvoiceOverviewRecord, InvoicePayment, InvoiceReminder,
+    InvoiceReminderDetail, InvoiceStatus,
+};
 use super::qr_bill::{self, QrAddress, QrBill, Reference};
 use super::repository::InvoiceRepository;
 
+/// Payment reminder, first and second dunning letter.
+const MAX_REMINDER_LEVEL: i64 = 3;
+
 /// Business rules for invoices: the company profile must allow a QR payment
-/// part before an invoice is issued, and the issued PDF is kept unchanged.
+/// part before an invoice is issued, the issued PDFs are kept unchanged, and
+/// only overdue invoices get a reminder, one level after the other.
 pub struct InvoiceService;
 
 impl InvoiceService {
@@ -38,11 +45,139 @@ impl InvoiceService {
             .ok_or_else(|| AppError::NotFound(format!("Kunde {customer_id} nicht gefunden")))?;
         let profile = CompanyProfileRepository::get(pool).await?;
 
-        let (payment, payment_error) = match Self::payment(&profile, &customer, id, sale.sale.total_cents) {
+        let overview = Self::find_overview(pool, id).await?;
+        let reminders = InvoiceRepository::reminders_of(pool, id).await?;
+
+        let message = format!("Rechnung {id}");
+        let (payment, payment_error) = match Self::payment(&profile, &customer, id, sale.sale.total_cents, message) {
             Ok(payment) => (Some(payment), None),
             Err(err) => (None, Some(err.to_string())),
         };
-        Ok(InvoiceDetail { invoice, order_id, customer, sale, payment, payment_error })
+        Ok(InvoiceDetail { invoice, overview, reminders, order_id, customer, sale, payment, payment_error })
+    }
+
+    pub async fn list_overview(pool: &SqlitePool) -> Result<Vec<InvoiceOverview>, AppError> {
+        let today = InvoiceRepository::today(pool).await?;
+        let rows = InvoiceRepository::list_overview(pool).await?;
+        Ok(rows.into_iter().map(|row| overview(row, &today)).collect())
+    }
+
+    async fn find_overview(pool: &SqlitePool, id: i64) -> Result<InvoiceOverview, AppError> {
+        let today = InvoiceRepository::today(pool).await?;
+        let row = InvoiceRepository::find_overview(pool, id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Rechnung {id} nicht gefunden")))?;
+        Ok(overview(row, &today))
+    }
+
+    /// Issues the next reminder of an overdue invoice. The first one is
+    /// free; each dunning letter adds the fee from the company profile.
+    pub async fn create_reminder(pool: &SqlitePool, invoice_id: i64) -> Result<InvoiceReminder, AppError> {
+        let invoice = Self::find_overview(pool, invoice_id).await?;
+        match invoice.status {
+            InvoiceStatus::Paid => {
+                return Err(AppError::Validation(format!("Rechnung {invoice_id} ist bereits bezahlt")));
+            }
+            InvoiceStatus::Refunded => {
+                return Err(AppError::Validation(format!("Rechnung {invoice_id} wurde vollständig retourniert")));
+            }
+            InvoiceStatus::Open => {
+                return Err(AppError::Validation(format!("Rechnung {invoice_id} ist noch nicht überfällig")));
+            }
+            InvoiceStatus::Overdue => {}
+        }
+        if invoice.reminder_level >= MAX_REMINDER_LEVEL {
+            return Err(AppError::Validation(format!(
+                "Für Rechnung {invoice_id} wurden bereits alle Mahnstufen erstellt"
+            )));
+        }
+
+        // A reminder without a payment part couldn't be sent.
+        let profile = CompanyProfileRepository::get(pool).await?;
+        Self::creditor(&profile)?;
+
+        let level = invoice.reminder_level + 1;
+        let fee_cents = if level >= 2 { profile.reminder_fee_cents } else { 0 };
+        let id = InvoiceRepository::create_reminder(
+            pool,
+            invoice_id,
+            level,
+            profile.reminder_payment_days,
+            fee_cents,
+            invoice.outstanding_cents + fee_cents,
+        )
+        .await?;
+        InvoiceRepository::find_reminder(pool, id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Mahnung {id} nach dem Anlegen nicht gefunden")))
+    }
+
+    pub async fn get_reminder(pool: &SqlitePool, id: i64) -> Result<InvoiceReminderDetail, AppError> {
+        let reminder = Self::find_reminder(pool, id).await?;
+        let invoice_id = reminder.invoice_id;
+        let invoice = InvoiceRepository::find(pool, invoice_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Rechnung {invoice_id} nicht gefunden")))?;
+        let (_, customer_id) = InvoiceRepository::order_of_sale(pool, invoice.sale_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Auftrag zu Rechnung {invoice_id} nicht gefunden")))?;
+        let customer = CustomerRepository::find_by_id(pool, customer_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Kunde {customer_id} nicht gefunden")))?;
+        let total_cents = Self::find_overview(pool, invoice_id).await?.total_cents;
+
+        let reminders = InvoiceRepository::reminders_of(pool, invoice_id).await?;
+        let fees_cents: i64 = reminders.iter().filter(|r| r.level <= reminder.level).map(|r| r.fee_cents).sum();
+        let previous_reminder_at =
+            reminders.iter().find(|r| r.level == reminder.level - 1).map(|r| r.created_at.clone());
+        // From the issued amount, so a return booked later doesn't change
+        // what this letter says.
+        let refunded_cents = total_cents + fees_cents - reminder.amount_cents;
+
+        let profile = CompanyProfileRepository::get(pool).await?;
+        let message = format!("Rechnung {invoice_id}, {}", reminder_label(reminder.level));
+        let (payment, payment_error) =
+            match Self::payment(&profile, &customer, invoice_id, reminder.amount_cents, message) {
+                Ok(payment) => (Some(payment), None),
+                Err(err) => (None, Some(err.to_string())),
+            };
+        Ok(InvoiceReminderDetail {
+            reminder,
+            invoice,
+            previous_reminder_at,
+            customer,
+            total_cents,
+            refunded_cents,
+            fees_cents,
+            payment,
+            payment_error,
+        })
+    }
+
+    async fn find_reminder(pool: &SqlitePool, id: i64) -> Result<InvoiceReminder, AppError> {
+        InvoiceRepository::find_reminder(pool, id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Mahnung {id} nicht gefunden")))
+    }
+
+    pub async fn reminder_has_pdf(pool: &SqlitePool, id: i64) -> Result<bool, AppError> {
+        Ok(Self::find_reminder(pool, id).await?.has_pdf)
+    }
+
+    /// The stored PDF and the file name to offer for it.
+    pub async fn reminder_pdf(pool: &SqlitePool, id: i64) -> Result<(Vec<u8>, String), AppError> {
+        let reminder = Self::find_reminder(pool, id).await?;
+        let pdf = InvoiceRepository::reminder_pdf(pool, id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Für Mahnung {id} ist noch kein PDF gespeichert")))?;
+        Ok((pdf, format!("Mahnung-{}-{}.pdf", reminder.invoice_id, reminder.level)))
+    }
+
+    pub async fn store_reminder_pdf(pool: &SqlitePool, id: i64, pdf: &[u8]) -> Result<(), AppError> {
+        if !pdf.starts_with(b"%PDF") {
+            return Err(AppError::Validation("Das erzeugte PDF ist ungültig".into()));
+        }
+        InvoiceRepository::store_reminder_pdf(pool, id, pdf).await
     }
 
     pub async fn pdf(pool: &SqlitePool, id: i64) -> Result<Vec<u8>, AppError> {
@@ -82,11 +217,13 @@ impl InvoiceService {
         customer: &Customer,
         invoice_id: i64,
         amount_cents: i64,
+        message: String,
     ) -> Result<InvoicePayment, AppError> {
         let (iban, creditor) = Self::creditor(profile)?;
         let debtor = Self::debtor(customer);
+        // Reminders keep the invoice's reference, so the bank assigns their
+        // payment to the same invoice.
         let reference = Reference::for_number(&iban, invoice_id);
-        let message = format!("Rechnung {invoice_id}");
         let qr_payload = QrBill {
             iban: &iban,
             creditor: &creditor,
@@ -154,5 +291,179 @@ impl InvoiceService {
                 },
             },
         ))
+    }
+}
+
+/// As printed on the letter and in the payment part.
+fn reminder_label(level: i64) -> &'static str {
+    match level {
+        1 => "Zahlungserinnerung",
+        2 => "1. Mahnung",
+        _ => "2. Mahnung",
+    }
+}
+
+/// `today` and the dates as "YYYY-MM-DD", which compare chronologically.
+fn invoice_status(row: &InvoiceOverviewRecord, due_date: &str, today: &str) -> InvoiceStatus {
+    if row.paid_on.is_some() {
+        InvoiceStatus::Paid
+    } else if row.refunded_cents > 0 && row.refunded_cents >= row.total_cents {
+        InvoiceStatus::Refunded
+    } else if due_date < today {
+        InvoiceStatus::Overdue
+    } else {
+        InvoiceStatus::Open
+    }
+}
+
+fn overview(row: InvoiceOverviewRecord, today: &str) -> InvoiceOverview {
+    let due_date = row.reminder_due_date.clone().unwrap_or_else(|| row.due_date.clone());
+    let status = invoice_status(&row, &due_date, today);
+    InvoiceOverview {
+        id: row.id,
+        sale_id: row.sale_id,
+        order_id: row.order_id,
+        customer_name: row.customer_name,
+        customer_company: row.customer_company,
+        order_status: row.order_status,
+        created_at: row.created_at,
+        due_date,
+        paid_on: row.paid_on,
+        total_cents: row.total_cents,
+        refunded_cents: row.refunded_cents,
+        fees_cents: row.fees_cents,
+        outstanding_cents: row.total_cents - row.refunded_cents + row.fees_cents,
+        reminder_level: row.reminder_level,
+        status,
+        can_remind: status == InvoiceStatus::Overdue && row.reminder_level < MAX_REMINDER_LEVEL,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::features::customer_order::model::{CompleteCustomerOrder, SaveCustomerOrder, SaveCustomerOrderItem};
+    use crate::features::customer_order::service::CustomerOrderService;
+    use crate::features::sale::model::PaymentMethod;
+
+    const SEED: &str = "
+        INSERT INTO product_group (id, name) VALUES (1, 'Shirts');
+        INSERT INTO product_subgroup (id, name, product_group_id) VALUES (1, 'Kinder', 1);
+        INSERT INTO article (id, code, name, product_group_id, product_subgroup_id, price_cents, stock)
+            VALUES (1, 'A1', 'Shirt', 1, 1, 5000, 5);
+        INSERT INTO customer (id, first_name, last_name) VALUES (1, 'Anna', 'Muster');
+        UPDATE company_profile SET name = 'Testladen', street = 'Bahnhofstrasse 1', postal_city = '8000 Zürich',
+            iban = 'CH44 3199 9123 0008 8901 2', reminder_fee_cents = 2000;
+    ";
+
+    fn with_invoice(test: impl AsyncFnOnce(&SqlitePool, i64)) {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let dir = std::env::temp_dir().join(format!("tiny-sales-test-{}", uuid::Uuid::new_v4()));
+            let pool = crate::db::connect_and_migrate(&dir.join("tiny-sales.db")).await.unwrap();
+            sqlx::raw_sql(SEED).execute(&pool).await.unwrap();
+            let order = CustomerOrderService::save(
+                &pool,
+                SaveCustomerOrder {
+                    id: None,
+                    customer_id: 1,
+                    status: "open".into(),
+                    payment_method: PaymentMethod::Invoice,
+                    discount: None,
+                    items: vec![SaveCustomerOrderItem { id: None, article_id: 1, quantity: 1, discount: None, note: None }],
+                },
+            )
+            .await
+            .unwrap();
+            let completed = CustomerOrderService::complete(
+                &pool,
+                CompleteCustomerOrder {
+                    order_id: order.id,
+                    payment_method: PaymentMethod::Invoice,
+                    cash_given_cents: None,
+                    discount: None,
+                },
+            )
+            .await
+            .unwrap();
+            test(&pool, completed.invoice_id.unwrap()).await;
+            pool.close().await;
+            let _ = std::fs::remove_dir_all(&dir);
+        });
+    }
+
+    /// Moves all deadlines of the invoice and its reminders into the past.
+    async fn let_deadline_pass(pool: &SqlitePool, invoice_id: i64) {
+        sqlx::query("UPDATE invoice SET due_date = '2020-01-01' WHERE id = ?")
+            .bind(invoice_id)
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE invoice_reminder SET due_date = '2020-01-01' WHERE invoice_id = ?")
+            .bind(invoice_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    #[test]
+    fn only_overdue_invoices_are_reminded_level_by_level() {
+        with_invoice(async |pool, id| {
+            assert_eq!(InvoiceService::find_overview(pool, id).await.unwrap().status, InvoiceStatus::Open);
+            assert!(InvoiceService::create_reminder(pool, id).await.is_err());
+
+            let_deadline_pass(pool, id).await;
+            assert!(InvoiceService::find_overview(pool, id).await.unwrap().can_remind);
+
+            // The payment reminder is free and sets a new deadline.
+            let first = InvoiceService::create_reminder(pool, id).await.unwrap();
+            assert_eq!((first.level, first.fee_cents, first.amount_cents), (1, 0, 5000));
+            assert_eq!(InvoiceService::find_overview(pool, id).await.unwrap().status, InvoiceStatus::Open);
+            assert!(InvoiceService::create_reminder(pool, id).await.is_err());
+
+            // Each dunning letter adds the fee.
+            let_deadline_pass(pool, id).await;
+            let second = InvoiceService::create_reminder(pool, id).await.unwrap();
+            assert_eq!((second.level, second.fee_cents, second.amount_cents), (2, 2000, 7000));
+            let_deadline_pass(pool, id).await;
+            let third = InvoiceService::create_reminder(pool, id).await.unwrap();
+            assert_eq!((third.level, third.fee_cents, third.amount_cents), (3, 2000, 9000));
+
+            // No level after the last one, and the letter's sums stay as issued.
+            let_deadline_pass(pool, id).await;
+            assert!(!InvoiceService::find_overview(pool, id).await.unwrap().can_remind);
+            assert!(InvoiceService::create_reminder(pool, id).await.is_err());
+            let detail = InvoiceService::get_reminder(pool, third.id).await.unwrap();
+            assert_eq!((detail.total_cents, detail.fees_cents, detail.refunded_cents), (5000, 4000, 0));
+            assert!(detail.payment.unwrap().qr_payload.contains("\n90.00\nCHF\n"));
+        });
+    }
+
+    #[test]
+    fn paid_and_returned_invoices_are_not_reminded() {
+        with_invoice(async |pool, id| {
+            let_deadline_pass(pool, id).await;
+            InvoiceService::set_paid_on(pool, id, Some("2026-01-01".into())).await.unwrap();
+            let paid = InvoiceService::find_overview(pool, id).await.unwrap();
+            assert_eq!((paid.status, paid.can_remind), (InvoiceStatus::Paid, false));
+            assert!(InvoiceService::create_reminder(pool, id).await.is_err());
+
+            InvoiceService::set_paid_on(pool, id, None).await.unwrap();
+            sqlx::query("INSERT INTO sale_return (sale_id, refund_method, total_refund_cents) VALUES (?, 'Cash', 1000)")
+                .bind(paid.sale_id)
+                .execute(pool)
+                .await
+                .unwrap();
+            // A partial return lowers what is owed.
+            let reminder = InvoiceService::create_reminder(pool, id).await.unwrap();
+            assert_eq!(reminder.amount_cents, 4000);
+            assert_eq!(InvoiceService::get_reminder(pool, reminder.id).await.unwrap().refunded_cents, 1000);
+
+            sqlx::query("INSERT INTO sale_return (sale_id, refund_method, total_refund_cents) VALUES (?, 'Cash', 4000)")
+                .bind(paid.sale_id)
+                .execute(pool)
+                .await
+                .unwrap();
+            assert_eq!(InvoiceService::find_overview(pool, id).await.unwrap().status, InvoiceStatus::Refunded);
+        });
     }
 }

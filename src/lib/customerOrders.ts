@@ -9,7 +9,7 @@ import {
 } from "./money/discount";
 import type { DiscountableLine, LineDiscountDraft, SaleDiscountDraft } from "./money/discount";
 import type { Article } from "../types/article";
-import type { CustomerOrderItem } from "../types/customerOrder";
+import type { CustomerOrder, CustomerOrderItem } from "../types/customerOrder";
 import type { LineDiscount, SaleDiscount } from "../types/sale";
 
 function newLineKey(): string {
@@ -119,4 +119,19 @@ export function formatDate(value: string): string {
   const date = new Date(value.length === 10 ? `${value}T00:00:00` : value.replace(" ", "T") + "Z");
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/** Today in the shop's time zone, as dates are stored ("YYYY-MM-DD"). */
+export function todayIso(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+/** What keeps a billed order open, e.g. "Lieferung, Zahlung". */
+export function openPointsOfOrder(order: CustomerOrder): string {
+  const points = [
+    order.status !== "delivered" ? "Lieferung" : null,
+    order.invoiceId !== null && !order.invoicePaidOn ? "Zahlung" : null,
+  ];
+  return points.filter(Boolean).join(", ");
 }

@@ -13,9 +13,13 @@ const SELECT_ORDER: &str = "
            customer_order.status as status, customer_order.payment_method as payment_method,
            customer_order.discount_kind as discount_kind, customer_order.discount_value as discount_value,
            customer_order.discount_cumulative as discount_cumulative, customer_order.sale_id as sale_id,
-           invoice.id as invoice_id, customer_order.created_at as created_at, customer_order.updated_at as updated_at
+           invoice.id as invoice_id, invoice.paid_on as invoice_paid_on, sale.total_cents as sale_total_cents,
+           (SELECT COALESCE(SUM(total_refund_cents), 0) FROM sale_return
+            WHERE sale_return.sale_id = customer_order.sale_id) as refunded_cents,
+           customer_order.created_at as created_at, customer_order.updated_at as updated_at
     FROM customer_order
     JOIN customer ON customer.id = customer_order.customer_id
+    LEFT JOIN sale ON sale.id = customer_order.sale_id
     LEFT JOIN invoice ON invoice.sale_id = customer_order.sale_id";
 
 const SELECT_ITEMS: &str = "
@@ -205,7 +209,7 @@ impl CustomerOrderRepository {
         .await?
         .rows_affected();
         if updated == 0 {
-            return Err(AppError::Validation(format!("Auftrag {id} ist bereits abgeschlossen")));
+            return Err(AppError::Validation(format!("Auftrag {id} ist bereits abgerechnet")));
         }
         Ok(())
     }

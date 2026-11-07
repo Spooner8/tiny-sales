@@ -1,15 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { DocumentLetterhead } from "../../organisms/DocumentLetterhead";
 import { QrBillPaymentPart } from "../../organisms/QrBillPaymentPart";
 import { formatArticleCode } from "../../../lib/articleCode";
 import { formatDate } from "../../../lib/customerOrders";
 import { paginateInvoice } from "../../../lib/invoiceLayout";
 import type { InvoiceMeasurements, InvoicePageLayout } from "../../../lib/invoiceLayout";
 import { formatChf } from "../../../lib/money/change";
-import { lineDiscountNote, saleDiscountLabel, vatLabel } from "../../../lib/saleText";
+import { documentAssetsLoaded } from "../../../lib/printPage";
+import { customerSalutation, lineDiscountNote, saleDiscountLabel, vatLabel } from "../../../lib/saleText";
 import type { CompanyProfile } from "../../../types/companyProfile";
-import { countryName } from "../../../types/customer";
-import type { Customer } from "../../../types/customer";
 import type { InvoiceDetail } from "../../../types/invoice";
 
 export interface InvoiceDocumentProps {
@@ -20,25 +20,6 @@ export interface InvoiceDocumentProps {
 }
 
 const MM_PER_PX = 25.4 / 96;
-
-function salutation(customer: Customer): string {
-  if (customer.gender === "male") return `Sehr geehrter Herr ${customer.lastName}`;
-  if (customer.gender === "female") return `Sehr geehrte Frau ${customer.lastName}`;
-  return `Guten Tag ${customer.firstName} ${customer.lastName}`;
-}
-
-function recipientName(customer: Customer): string {
-  const title = customer.gender === "male" ? "Herr " : customer.gender === "female" ? "Frau " : "";
-  return `${title}${customer.firstName} ${customer.lastName}`;
-}
-
-async function imagesLoaded(root: HTMLElement) {
-  await Promise.all(
-    Array.from(root.querySelectorAll("img")).map((img) =>
-      img.complete ? Promise.resolve() : new Promise((resolve) => (img.onload = img.onerror = resolve)),
-    ),
-  );
-}
 
 function heightMm(element: Element | null): number {
   return element ? element.getBoundingClientRect().height * MM_PER_PX : 0;
@@ -79,7 +60,7 @@ export function InvoiceDocument({ detail, company, onReady }: InvoiceDocumentPro
     let cancelled = false;
     const root = measureRef.current;
     if (!root) return;
-    void Promise.all([document.fonts.ready, imagesLoaded(root)]).then(() => {
+    void documentAssetsLoaded(root).then(() => {
       if (cancelled) return;
       setPages(paginateInvoice(measure(root), payment !== null));
       setReady(true);
@@ -94,32 +75,10 @@ export function InvoiceDocument({ detail, company, onReady }: InvoiceDocumentPro
   }, [ready]);
 
   const pageCount = pages?.length ?? 1;
-  const senderLine = [company.name, company.street, company.postalCity].filter(Boolean).join(" · ");
 
   const firstHeader = (
     <>
-      <header className="invoice-header">
-        {company.logo ? <img className="invoice-logo" src={company.logo} alt={company.name} /> : <span />}
-        <address className="invoice-company">
-          <strong>{company.name}</strong>
-          {company.street && <span>{company.street}</span>}
-          {company.postalCity && <span>{company.postalCity}</span>}
-          {company.phone && <span>{company.phone}</span>}
-          {company.website && <span>{company.website}</span>}
-        </address>
-      </header>
-
-      <address className="invoice-recipient">
-        <span className="invoice-sender-line">{senderLine}</span>
-        {customer.company && <span>{customer.company}</span>}
-        <span>{recipientName(customer)}</span>
-        {customer.street && <span>{customer.street}</span>}
-        {(customer.postalCode || customer.city) && (
-          <span>{[customer.postalCode, customer.city].filter(Boolean).join(" ")}</span>
-        )}
-        {/* Abroad, the country goes on the last line in capitals, as the post wants it. */}
-        {customer.country !== "CH" && <span>{countryName(customer.country).toUpperCase()}</span>}
-      </address>
+      <DocumentLetterhead company={company} customer={customer} />
 
       <h1 className="invoice-title">Rechnung</h1>
       <dl className="invoice-meta">
@@ -144,7 +103,7 @@ export function InvoiceDocument({ detail, company, onReady }: InvoiceDocumentPro
         <dd>1 von {pageCount}</dd>
       </dl>
 
-      <p>{salutation(customer)}</p>
+      <p>{customerSalutation(customer)}</p>
       <p>Vielen Dank für Ihren Auftrag. Wir stellen Ihnen folgende Positionen in Rechnung:</p>
     </>
   );

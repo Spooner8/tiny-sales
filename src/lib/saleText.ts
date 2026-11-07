@@ -1,8 +1,15 @@
 import { formatChf } from "./money/change";
 import { formatPercent } from "./money/discount";
+import type { Customer } from "../types/customer";
 import type { Sale, SaleItemDetail } from "../types/sale";
 
 // Wording shared by receipts and invoices.
+
+export function customerSalutation(customer: Customer): string {
+  if (customer.gender === "male") return `Sehr geehrter Herr ${customer.lastName}`;
+  if (customer.gender === "female") return `Sehr geehrte Frau ${customer.lastName}`;
+  return `Guten Tag ${customer.firstName} ${customer.lastName}`;
+}
 
 /** Explains why a line costs less than its regular price, e.g. "Aktion −20 %". */
 export function lineDiscountNote(item: SaleItemDetail): string | null {

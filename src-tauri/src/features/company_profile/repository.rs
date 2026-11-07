@@ -10,7 +10,7 @@ impl CompanyProfileRepository {
     pub async fn get(pool: &SqlitePool) -> Result<CompanyProfile, AppError> {
         let profile = sqlx::query_as::<_, CompanyProfile>(
             "SELECT name, street, postal_city, phone, website, vat_number, receipt_thanks, receipt_signature, logo, logo_mark,
-                    iban, invoice_payment_days, vat_rate_percent
+                    iban, invoice_payment_days, vat_rate_percent, reminder_payment_days, reminder_fee_cents
              FROM company_profile WHERE id = 1",
         )
         .fetch_one(pool)
@@ -23,7 +23,8 @@ impl CompanyProfileRepository {
             "UPDATE company_profile SET
                 name = ?, street = ?, postal_city = ?, phone = ?, website = ?, vat_number = ?,
                 receipt_thanks = ?, receipt_signature = ?, logo = ?, logo_mark = ?,
-                iban = ?, invoice_payment_days = ?, vat_rate_percent = ?, updated_at = CURRENT_TIMESTAMP
+                iban = ?, invoice_payment_days = ?, vat_rate_percent = ?, reminder_payment_days = ?,
+                reminder_fee_cents = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = 1",
         )
         .bind(&profile.name)
@@ -39,6 +40,8 @@ impl CompanyProfileRepository {
         .bind(&profile.iban)
         .bind(profile.invoice_payment_days)
         .bind(profile.vat_rate_percent)
+        .bind(profile.reminder_payment_days)
+        .bind(profile.reminder_fee_cents)
         .execute(pool)
         .await?;
         Ok(())

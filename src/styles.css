@@ -1792,6 +1792,12 @@
   text-decoration: underline;
 }
 
+.invoice-reminder-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+
 /* Paper, laid out in millimetres as printed: white with dark text in dark
    mode too, like the receipt. */
 .invoice-document {

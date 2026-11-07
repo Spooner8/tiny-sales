@@ -21,4 +21,8 @@ export interface CompanyProfile {
   invoicePaymentDays: number;
   /** VAT rate for new sales in percent; 0 shows no VAT. */
   vatRatePercent: number;
+  /** Payment term of reminders in days. */
+  reminderPaymentDays: number;
+  /** Fee per dunning letter; the payment reminder itself is free. */
+  reminderFeeCents: number;
 }
