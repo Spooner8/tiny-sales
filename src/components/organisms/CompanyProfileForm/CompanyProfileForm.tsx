@@ -7,20 +7,23 @@ import { FormField } from "../../molecules/FormField";
 import { ImageField } from "../../molecules/ImageField";
 import type { CompanyProfile } from "../../../types/companyProfile";
 
+/** The part of the profile this form edits. */
+export type CompanyDetails = Pick<
+  CompanyProfile,
+  "name" | "street" | "postalCity" | "phone" | "website" | "vatNumber" | "logo" | "logoMark"
+>;
+
 export interface CompanyProfileFormProps {
   initial: CompanyProfile;
   submitting?: boolean;
   errorMessage?: string | null;
   /** Shown after a successful save until the next change. */
   saved?: boolean;
-  onSubmit: (values: CompanyProfile) => void;
+  onSubmit: (values: CompanyDetails) => void;
   onChange?: () => void;
 }
 
-type TextField = Exclude<
-  keyof CompanyProfile,
-  "logo" | "logoMark" | "invoicePaymentDays" | "vatRatePercent" | "reminderPaymentDays" | "reminderFeeCents"
->;
+type TextField = Exclude<keyof CompanyDetails, "logo" | "logoMark">;
 
 const TEXT_FIELDS: { key: TextField; label: string; placeholder: string }[] = [
   { key: "name", label: "Firmenname", placeholder: "z.B. Muster GmbH" },
@@ -29,9 +32,6 @@ const TEXT_FIELDS: { key: TextField; label: string; placeholder: string }[] = [
   { key: "phone", label: "Telefon", placeholder: "z.B. +41 44 123 45 67" },
   { key: "website", label: "Website", placeholder: "z.B. www.example.ch" },
   { key: "vatNumber", label: "MWST-Nummer", placeholder: "z.B. CHE-123.456.789 MWST" },
-  { key: "receiptThanks", label: "Quittung: Dankeszeile", placeholder: "z.B. Vielen Dank für Ihren Einkauf!" },
-  { key: "receiptSignature", label: "Quittung: Grusszeile", placeholder: "z.B. Ihr Muster-Team" },
-  { key: "iban", label: "IBAN für Rechnungen (QR-Zahlteil)", placeholder: "z.B. CH44 3199 9123 0008 8901 2" },
 ];
 
 export function CompanyProfileForm({
@@ -42,34 +42,25 @@ export function CompanyProfileForm({
   onSubmit,
   onChange,
 }: CompanyProfileFormProps) {
-  const [values, setValues] = useState<CompanyProfile>(initial);
-  const [paymentDays, setPaymentDays] = useState(String(initial.invoicePaymentDays));
-  const paymentDaysValid = /^\d{1,3}$/.test(paymentDays.trim());
-  const [vatRate, setVatRate] = useState(String(initial.vatRatePercent));
-  // Empty means no VAT; up to two decimals, e.g. 8.1 or 2,6.
-  const vatRateValid = vatRate.trim() === "" || /^\d{1,2}([.,]\d{1,2})?$/.test(vatRate.trim());
+  const [values, setValues] = useState<CompanyDetails>({
+    name: initial.name,
+    street: initial.street,
+    postalCity: initial.postalCity,
+    phone: initial.phone,
+    website: initial.website,
+    vatNumber: initial.vatNumber,
+    logo: initial.logo,
+    logoMark: initial.logoMark,
+  });
 
-  const [reminderDays, setReminderDays] = useState(String(initial.reminderPaymentDays));
-  const reminderDaysValid = /^\d{1,3}$/.test(reminderDays.trim());
-  const [reminderFee, setReminderFee] = useState((initial.reminderFeeCents / 100).toFixed(2));
-  // Empty means no fee.
-  const reminderFeeValid = reminderFee.trim() === "" || /^\d+([.,]\d{1,2})?$/.test(reminderFee.trim());
-
-  function update(change: Partial<CompanyProfile>) {
+  function update(change: Partial<CompanyDetails>) {
     setValues((prev) => ({ ...prev, ...change }));
     onChange?.();
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!paymentDaysValid || !vatRateValid || !reminderDaysValid || !reminderFeeValid) return;
-    onSubmit({
-      ...values,
-      invoicePaymentDays: Number(paymentDays.trim()),
-      vatRatePercent: vatRate.trim() ? Number.parseFloat(vatRate.trim().replace(",", ".")) : 0,
-      reminderPaymentDays: Number(reminderDays.trim()),
-      reminderFeeCents: reminderFee.trim() ? Math.round(Number.parseFloat(reminderFee.trim().replace(",", ".")) * 100) : 0,
-    });
+    onSubmit(values);
   }
 
   return (
@@ -85,67 +76,6 @@ export function CompanyProfileForm({
             />
           </FormField>
         ))}
-        <FormField
-          label="MWST-Satz in % (0 = keine MWST ausweisen)"
-          htmlFor="company-vat-rate"
-          error={vatRateValid ? null : "Bitte einen Satz wie 8.1 eingeben"}
-        >
-          <Input
-            id="company-vat-rate"
-            inputMode="decimal"
-            value={vatRate}
-            onChange={(e) => {
-              setVatRate(e.target.value);
-              onChange?.();
-            }}
-            placeholder="z.B. 8.1"
-          />
-        </FormField>
-        <FormField
-          label="Zahlungsfrist für Mahnungen (Tage)"
-          htmlFor="company-reminder-days"
-          error={reminderDaysValid ? null : "Bitte eine Anzahl Tage eingeben, z.B. 10"}
-        >
-          <Input
-            id="company-reminder-days"
-            inputMode="numeric"
-            value={reminderDays}
-            onChange={(e) => {
-              setReminderDays(e.target.value);
-              onChange?.();
-            }}
-          />
-        </FormField>
-        <FormField
-          label="Mahngebühr pro Mahnung (CHF, Zahlungserinnerung gratis)"
-          htmlFor="company-reminder-fee"
-          error={reminderFeeValid ? null : "Bitte einen Betrag wie 20.00 eingeben"}
-        >
-          <Input
-            id="company-reminder-fee"
-            inputMode="decimal"
-            value={reminderFee}
-            onChange={(e) => {
-              setReminderFee(e.target.value);
-              onChange?.();
-            }}
-          />
-        </FormField>
-        <FormField
-          label="Zahlungsfrist für Rechnungen (Tage)"
-          htmlFor="company-invoice-payment-days"
-          error={paymentDaysValid ? null : "Bitte eine Anzahl Tage eingeben, z.B. 30"}
-        >
-          <Input
-            id="company-invoice-payment-days"
-            inputMode="numeric"
-            value={paymentDays}
-            onChange={(e) => {
-              setPaymentDays(e.target.value);
-              onChange?.();
-            }}
-          />
-        </FormField>
       </div>
 
       <div className="company-profile-images">

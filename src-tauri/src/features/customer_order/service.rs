@@ -476,7 +476,7 @@ mod tests {
             let err = CustomerOrderService::complete(pool, complete(saved.id, PaymentMethod::Invoice))
                 .await
                 .unwrap_err();
-            assert!(err.to_string().contains("Firmenprofil"), "{err}");
+            assert!(err.to_string().contains("fehlt in den Einstellungen"), "{err}");
             assert_eq!(sale_count(pool).await, 0);
 
             // Paid at the checkout instead, it needs no invoice details.
