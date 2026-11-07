@@ -1,5 +1,6 @@
 import { Button } from "../../atoms/Button";
 import { Select } from "../../atoms/Select";
+import { ColorSchemePicker } from "../../molecules/ColorSchemePicker";
 import { FormField } from "../../molecules/FormField";
 import { Checkbox } from "../../ui/checkbox";
 import { useAppVersionQuery, useInstallUpdate, useUpdateCheckQuery } from "../../../hooks/useAppUpdate";
@@ -28,7 +29,13 @@ export function SystemSettings() {
     <>
       <div className="settings-section">
         <h2>Darstellung</h2>
-        <FormField label="Farbschema" htmlFor="theme-preference">
+        <div className="form-field">
+          <span id="color-scheme-label" className="field-label">
+            Farbe
+          </span>
+          <ColorSchemePicker value={theme.colorScheme} onChange={theme.setColorScheme} labelledBy="color-scheme-label" />
+        </div>
+        <FormField label="Hell oder dunkel" htmlFor="theme-preference">
           <Select
             id="theme-preference"
             value={theme.preference}
