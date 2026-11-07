@@ -10,6 +10,7 @@ import { formatChf } from "../../../lib/money/change";
 import { customerLabel } from "../../../types/customer";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "../../../types/customerOrder";
 import type { CustomerOrder, OrderStatus } from "../../../types/customerOrder";
+import { formatInvoiceNumber } from "../../../types/invoice";
 import { formatReceiptNumber, PAYMENT_METHOD_LABELS } from "../../../types/sale";
 
 export interface CustomerOrderTableProps {
@@ -21,6 +22,17 @@ export interface CustomerOrderTableProps {
 }
 
 const columnHelper = createColumnHelper<CustomerOrder>();
+
+/** How far the billing is, e.g. "Rechnung 3 · offen" or "Beleg 00012 · bezahlt". */
+function billingLabel(order: CustomerOrder): string {
+  if (order.saleId === null) return "Nicht abgerechnet";
+  if (order.invoiceId === null) return `Beleg ${formatReceiptNumber(order.saleId)} · bezahlt`;
+  return `Rechnung ${formatInvoiceNumber(order.invoiceId)} · ${order.invoicePaidOn ? "bezahlt" : "offen"}`;
+}
+
+function billingTone(order: CustomerOrder): "warning" | "success" {
+  return order.saleId === null || (order.invoiceId !== null && !order.invoicePaidOn) ? "warning" : "success";
+}
 
 const STATUS_OPTIONS = ORDER_STATUSES.map((s) => ({ value: s, label: ORDER_STATUS_LABELS[s] }));
 
@@ -70,18 +82,16 @@ export function CustomerOrderTable({ orders, onOpen, onChangeStatus, toolbar }: 
       header: "Total (CHF)",
       meta: { searchable: true },
     }),
-    columnHelper.accessor((o) => (o.saleId === null ? "Offen" : "Abgeschlossen"), {
-      id: "completed",
-      header: "Abschluss",
-      cell: ({ row }) =>
-        row.original.saleId === null ? (
-          <Badge tone="warning">Offen</Badge>
-        ) : (
-          <Badge tone="success">
-            {row.original.invoiceId !== null ? `Rechnung ${row.original.invoiceId}` : `Beleg ${formatReceiptNumber(row.original.saleId)}`}
-          </Badge>
-        ),
-      meta: { filterable: true },
+    columnHelper.accessor(billingLabel, {
+      id: "billing",
+      header: "Abrechnung",
+      cell: ({ row, getValue }) => (
+        <div className="row-actions">
+          <Badge tone={billingTone(row.original)}>{getValue()}</Badge>
+          {row.original.done && <Badge tone="neutral">Erledigt</Badge>}
+        </div>
+      ),
+      meta: { searchable: true },
     }),
     columnHelper.display({
       id: "actions",

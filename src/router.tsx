@@ -7,6 +7,8 @@ import { CheckoutPage } from "./pages/CheckoutPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { DatabaseErrorPage } from "./pages/DatabaseErrorPage";
 import { InvoicePage } from "./pages/InvoicePage";
+import { InvoiceReminderPage } from "./pages/InvoiceReminderPage";
+import { InvoicesPage } from "./pages/InvoicesPage";
 import { LabelsPage } from "./pages/LabelsPage";
 import { LabelTemplatesPage } from "./pages/LabelTemplatesPage";
 import { OrderCheckoutPage } from "./pages/OrderCheckoutPage";
@@ -64,6 +66,18 @@ const orderCheckoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/orders/$orderId/checkout",
   component: OrderCheckoutPage,
+});
+
+const invoicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invoices",
+  component: InvoicesPage,
+});
+
+const invoiceReminderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/invoices/$invoiceId/reminders/$reminderId",
+  component: InvoiceReminderPage,
 });
 
 const invoiceRoute = createRoute({
@@ -131,7 +145,9 @@ const routeTree = rootRoute.addChildren([
   ordersRoute,
   orderRoute,
   orderCheckoutRoute,
+  invoicesRoute,
   invoiceRoute,
+  invoiceReminderRoute,
   customersRoute,
   articleRoute,
   productGroupsRoute,

@@ -14,15 +14,18 @@ import {
 import { DatePicker } from "../components/molecules/DatePicker";
 import { FormField } from "../components/molecules/FormField";
 import { PageHeader } from "../components/molecules/PageHeader";
+import { COLOR_SCHEMES } from "../lib/colorSchemes";
+import { formatDate } from "../lib/customerOrders";
 import { formatChf } from "../lib/money/change";
 import { useRevenueByArticle, useRevenueByDay, useRevenueByProductGroup } from "../hooks/useStatistics";
 import { useTheme } from "../hooks/useTheme";
 
 // Each mode validated against its own card surface via the dataviz skill's
 // palette validator (light: #ffffff, dark: #1b1b1b) - not an automatic flip.
+// The series colour comes from the colour scheme.
 const CHART_PALETTE = {
-  light: { series: "#e5097f", grid: "#e4dfe4", axis: "#70656f" },
-  dark: { series: "#cd59cb", grid: "#383438", axis: "#a29ca2" },
+  light: { grid: "#e4dfe4", axis: "#70656f" },
+  dark: { grid: "#383438", axis: "#a29ca2" },
 } as const;
 
 const tooltipStyles = {
@@ -48,8 +51,8 @@ function todayIso(): string {
 export function StatisticsPage() {
   const [from, setFrom] = useState(isoDaysAgo(30));
   const [to, setTo] = useState(todayIso());
-  const { resolvedTheme } = useTheme();
-  const palette = CHART_PALETTE[resolvedTheme];
+  const { resolvedTheme, colorScheme } = useTheme();
+  const palette = { ...CHART_PALETTE[resolvedTheme], series: COLOR_SCHEMES[colorScheme][resolvedTheme].chart };
   const tickStyle = { fill: palette.axis, fontSize: 12 };
 
   const byDay = useRevenueByDay(from, to);
@@ -94,7 +97,13 @@ export function StatisticsPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} vertical={false} />
-                <XAxis dataKey="day" tick={tickStyle} axisLine={{ stroke: palette.grid }} tickLine={false} />
+                <XAxis
+                  dataKey="day"
+                  tickFormatter={(day: string) => formatDate(day)}
+                  tick={tickStyle}
+                  axisLine={{ stroke: palette.grid }}
+                  tickLine={false}
+                />
                 <YAxis
                   tickFormatter={(v: number) => formatChf(v * 100)}
                   width={70}
@@ -103,6 +112,7 @@ export function StatisticsPage() {
                   tickLine={false}
                 />
                 <Tooltip
+                  labelFormatter={(day) => formatDate(String(day))}
                   formatter={(v: number) => `${formatChf(v * 100)} CHF`}
                   {...tooltipStyles}
                 />

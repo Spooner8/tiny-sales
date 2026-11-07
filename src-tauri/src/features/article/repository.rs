@@ -191,7 +191,20 @@ impl ArticleRepository {
         input: &NewArticle,
     ) -> Result<Article, AppError> {
         let mut tx = pool.begin().await?;
+        let id = Self::create_in(&mut tx, code, input).await?;
+        tx.commit().await?;
 
+        Self::find_by_id(pool, id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Artikel {id} nach dem Anlegen nicht gefunden")))
+    }
+
+    /// Inserts the article and its component links; returns the id.
+    pub async fn create_in(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        code: &str,
+        input: &NewArticle,
+    ) -> Result<i64, AppError> {
         let id = sqlx::query(
             "INSERT INTO article (code, name, product_group_id, product_subgroup_id, internal_number, description, is_finishing, price_cents, stock, active, discontinued, discount_percent)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
@@ -207,21 +220,30 @@ impl ArticleRepository {
         .bind(input.stock)
         .bind(input.discontinued)
         .bind(input.discount_percent)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?
         .last_insert_rowid();
 
-        Self::replace_component_links(&mut tx, id, &input.component_links).await?;
-        tx.commit().await?;
-
-        Self::find_by_id(pool, id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Artikel {id} nach dem Anlegen nicht gefunden")))
+        Self::replace_component_links(tx, id, &input.component_links).await?;
+        Ok(id)
     }
 
     pub async fn update(pool: &SqlitePool, input: &UpdateArticle) -> Result<Article, AppError> {
         let mut tx = pool.begin().await?;
+        Self::update_fields_in(&mut tx, input).await?;
+        Self::replace_component_links(&mut tx, input.id, &input.component_links).await?;
+        tx.commit().await?;
 
+        Self::find_by_id(pool, input.id)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("Artikel {} nicht gefunden", input.id)))
+    }
+
+    /// Updates the article's own fields; its component links stay as they are.
+    pub async fn update_fields_in(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        input: &UpdateArticle,
+    ) -> Result<(), AppError> {
         sqlx::query(
             "UPDATE article
              SET name = ?, product_group_id = ?, product_subgroup_id = ?, internal_number = ?, description = ?, is_finishing = ?, price_cents = ?, stock = ?, active = ?, discontinued = ?, discount_percent = ?, updated_at = CURRENT_TIMESTAMP
@@ -239,15 +261,9 @@ impl ArticleRepository {
         .bind(input.discontinued)
         .bind(input.discount_percent)
         .bind(input.id)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
-
-        Self::replace_component_links(&mut tx, input.id, &input.component_links).await?;
-        tx.commit().await?;
-
-        Self::find_by_id(pool, input.id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("Artikel {} nicht gefunden", input.id)))
+        Ok(())
     }
 
     pub async fn deactivate(pool: &SqlitePool, id: i64) -> Result<(), AppError> {

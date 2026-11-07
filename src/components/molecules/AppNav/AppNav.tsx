@@ -2,6 +2,7 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 import {
   BarChart3,
   ClipboardList,
+  FileText,
   FolderTree,
   LayoutTemplate,
   Package,
@@ -18,9 +19,11 @@ import type { LinkProps } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
 
-import appMark from "../../../assets/app-mark.svg";
+import { useTheme } from "../../../hooks/useTheme";
+import { appMarkUrl } from "../../../lib/appMark";
 import { NavLink } from "../../atoms/NavLink";
 import { useCompanyProfileQuery } from "../../../hooks/useCompanyProfile";
+import { useInvoicesQuery } from "../../../hooks/useInvoice";
 import { useOpenSalesQuery } from "../../../hooks/useOpenSales";
 
 interface NavItem {
@@ -33,6 +36,7 @@ interface NavItem {
 const PRIMARY_ITEMS: NavItem[] = [
   { to: "/", label: "Kasse", exact: true, icon: ShoppingCart },
   { to: "/orders", label: "Aufträge", exact: false, icon: ClipboardList },
+  { to: "/invoices", label: "Rechnungen", exact: false, icon: FileText },
   { to: "/customers", label: "Kunden", exact: false, icon: Users },
   { to: "/articles", label: "Artikel", exact: false, icon: Package },
   { to: "/sales", label: "Verkäufe", exact: false, icon: Receipt },
@@ -55,7 +59,11 @@ export function AppNav() {
   // working on another page.
   const { data: openSales } = useOpenSalesQuery();
   const { data: company } = useCompanyProfileQuery();
+  const { colorScheme } = useTheme();
   const openSaleCount = (openSales ?? []).filter((sale) => sale.items.length > 0).length;
+  // Overdue invoices, so reminders aren't forgotten.
+  const { data: invoices } = useInvoicesQuery();
+  const overdueCount = (invoices ?? []).filter((invoice) => invoice.status === "overdue").length;
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_STORAGE_KEY, collapsed ? "1" : "0");
@@ -69,7 +77,7 @@ export function AppNav() {
           <img src={collapsed ? company.logoMark || company.logo : company.logo} alt={company.name} />
         ) : (
           // No logo entered yet (Einstellungen → Firma): the app's own mark.
-          <img className="app-nav-brand-mark" src={appMark} alt="Tiny Sales" />
+          <img className="app-nav-brand-mark" src={appMarkUrl(colorScheme)} alt="Tiny Sales" />
         )}
       </div>
       <button
@@ -83,16 +91,17 @@ export function AppNav() {
 
       <div className="app-nav-items">
         {PRIMARY_ITEMS.map((item) => {
-          const badge = item.to === "/" ? openSaleCount : 0;
+          const badge = item.to === "/" ? openSaleCount : item.to === "/invoices" ? overdueCount : 0;
+          const badgeTitle = item.to === "/" ? `${badge} offene Verkäufe` : `${badge} überfällige Rechnungen`;
           return (
             <NavLink key={item.to} to={item.to} activeOptions={{ exact: item.exact }}>
               <span className="app-nav-icon">
                 <item.icon size={18} />
-                {collapsed && badge > 0 && <span className="app-nav-dot" title={`${badge} offene Verkäufe`} />}
+                {collapsed && badge > 0 && <span className="app-nav-dot" title={badgeTitle} />}
               </span>
               {!collapsed && <span>{item.label}</span>}
               {!collapsed && badge > 0 && (
-                <span className="app-nav-badge" title={`${badge} offene Verkäufe`}>
+                <span className="app-nav-badge" title={badgeTitle}>
                   {badge}
                 </span>
               )}

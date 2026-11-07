@@ -4,7 +4,7 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   Cash: "Bar",
   Twint: "Twint",
-  Card: "Karte (SumUp)",
+  Card: "Karte",
   Invoice: "Rechnung",
   BankTransfer: "Überweisung",
 };
@@ -83,6 +83,7 @@ export interface Sale {
   vatCents: number | null;
   /** Set for sales that completed a customer order. */
   customerOrderId: number | null;
+  /** The order's customer, or the one assigned to the sale afterwards. */
   customerName: string | null;
   customerCompany: string | null;
   /** Set for sales paid by invoice. */
@@ -104,7 +105,7 @@ export interface SaleListEntry {
   paymentMethod: PaymentMethod;
   totalCents: number;
   pickupNumber: string | null;
-  /** For sales of a customer order. */
+  /** The order's customer, or the one assigned to the sale afterwards. */
   customerName: string | null;
   customerCompany: string | null;
   /** For sales paid by invoice (not set on their returns). */

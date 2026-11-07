@@ -55,7 +55,7 @@ impl CustomerOrderService {
                 .await?
                 .ok_or_else(|| AppError::NotFound(format!("Auftrag {id} nicht gefunden")))?;
             if order.sale_id.is_some() {
-                return Err(AppError::Validation("Abgeschlossene Aufträge können nicht mehr geändert werden".into()));
+                return Err(AppError::Validation("Abgerechnete Aufträge können nicht mehr geändert werden".into()));
             }
             existing = items.into_iter().map(|item| (item.id, item)).collect();
         }
@@ -139,7 +139,7 @@ impl CustomerOrderService {
     pub async fn delete(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
         let order = Self::get(pool, id).await?;
         if order.sale_id.is_some() {
-            return Err(AppError::Validation("Abgeschlossene Aufträge können nicht gelöscht werden".into()));
+            return Err(AppError::Validation("Abgerechnete Aufträge können nicht gelöscht werden".into()));
         }
         CustomerOrderRepository::delete(pool, id).await
     }
@@ -150,7 +150,7 @@ impl CustomerOrderService {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Auftrag {} nicht gefunden", input.order_id)))?;
         if order.sale_id.is_some() {
-            return Err(AppError::Validation(format!("Auftrag {} ist bereits abgeschlossen", order.id)));
+            return Err(AppError::Validation(format!("Auftrag {} ist bereits abgerechnet", order.id)));
         }
         if items.is_empty() {
             return Err(AppError::Validation("Der Auftrag enthält keine Artikel".into()));
@@ -261,6 +261,7 @@ impl CustomerOrderService {
             .map(|totals| totals.discount.cents)
             .unwrap_or(0);
 
+        let done = order_done(&order);
         Ok(CustomerOrder {
             id: order.id,
             customer_id: order.customer_id,
@@ -271,6 +272,8 @@ impl CustomerOrderService {
             discount,
             sale_id: order.sale_id,
             invoice_id: order.invoice_id,
+            invoice_paid_on: order.invoice_paid_on,
+            done,
             created_at: order.created_at,
             updated_at: order.updated_at,
             items: order_items,
@@ -279,6 +282,17 @@ impl CustomerOrderService {
             total_cents: subtotal_cents - discount_cents,
         })
     }
+}
+
+/// Billing doesn't finish an order: it may still have to be produced and
+/// delivered, and an invoice paid. A fully returned order is over either way.
+fn order_done(order: &CustomerOrderRecord) -> bool {
+    let Some(total_cents) = order.sale_total_cents else {
+        return false;
+    };
+    let returned = order.refunded_cents > 0 && order.refunded_cents >= total_cents;
+    let paid = order.invoice_id.is_none() || order.invoice_paid_on.is_some();
+    returned || (order.status == "delivered" && paid)
 }
 
 fn line_discount(item: &CustomerOrderItemRecord) -> Option<LineDiscountInput> {
@@ -406,6 +420,54 @@ mod tests {
     }
 
     #[test]
+    fn billed_order_stays_open_until_delivered_and_paid() {
+        with_pool(async |pool| {
+            let saved = CustomerOrderService::save(pool, order(None, PaymentMethod::Card, vec![line(None, 1, None, None)]))
+                .await
+                .unwrap();
+            CustomerOrderService::complete(pool, complete(saved.id, PaymentMethod::Card)).await.unwrap();
+            assert!(!CustomerOrderService::get(pool, saved.id).await.unwrap().done);
+            let delivered = CustomerOrderService::set_status(pool, saved.id, "delivered".into()).await.unwrap();
+            assert!(delivered.done);
+
+            // By invoice, it also has to be paid.
+            sqlx::query(
+                "UPDATE company_profile SET name = 'Testladen', street = 'Bahnhofstrasse 1', postal_city = '8000 Zürich',
+                        iban = 'CH44 3199 9123 0008 8901 2'",
+            )
+            .execute(pool)
+            .await
+            .unwrap();
+            let saved = CustomerOrderService::save(pool, order(None, PaymentMethod::Invoice, vec![line(None, 1, None, None)]))
+                .await
+                .unwrap();
+            let invoice_id = CustomerOrderService::complete(pool, complete(saved.id, PaymentMethod::Invoice))
+                .await
+                .unwrap()
+                .invoice_id
+                .unwrap();
+            assert!(!CustomerOrderService::set_status(pool, saved.id, "delivered".into()).await.unwrap().done);
+            InvoiceService::set_paid_on(pool, invoice_id, Some("2026-11-07".into())).await.unwrap();
+            let paid = CustomerOrderService::get(pool, saved.id).await.unwrap();
+            assert!(paid.done);
+            assert_eq!(paid.invoice_paid_on.as_deref(), Some("2026-11-07"));
+
+            // Returned completely, nothing is left to deliver or to pay.
+            let saved = CustomerOrderService::save(pool, order(None, PaymentMethod::Card, vec![line(None, 1, None, None)]))
+                .await
+                .unwrap();
+            let sale = CustomerOrderService::complete(pool, complete(saved.id, PaymentMethod::Card)).await.unwrap().sale;
+            sqlx::query("INSERT INTO sale_return (sale_id, refund_method, total_refund_cents) VALUES (?, 'Card', ?)")
+                .bind(sale.sale.id)
+                .bind(sale.sale.total_cents)
+                .execute(pool)
+                .await
+                .unwrap();
+            assert!(CustomerOrderService::get(pool, saved.id).await.unwrap().done);
+        });
+    }
+
+    #[test]
     fn invoice_needs_a_complete_company_profile() {
         with_pool(async |pool| {
             let saved = CustomerOrderService::save(pool, order(None, PaymentMethod::Invoice, vec![line(None, 1, None, None)]))
@@ -414,7 +476,7 @@ mod tests {
             let err = CustomerOrderService::complete(pool, complete(saved.id, PaymentMethod::Invoice))
                 .await
                 .unwrap_err();
-            assert!(err.to_string().contains("Firmenprofil"), "{err}");
+            assert!(err.to_string().contains("fehlt in den Einstellungen"), "{err}");
             assert_eq!(sale_count(pool).await, 0);
 
             // Paid at the checkout instead, it needs no invoice details.

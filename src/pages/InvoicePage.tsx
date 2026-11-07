@@ -1,6 +1,6 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "../components/atoms/Badge";
@@ -8,36 +8,37 @@ import { Button } from "../components/atoms/Button";
 import { PageHeader } from "../components/molecules/PageHeader";
 import { InvoiceDocument } from "../components/templates/InvoiceDocument";
 import { useCompanyProfileQuery } from "../hooks/useCompanyProfile";
-import { useInvoiceQuery, useSetInvoicePaidOn, useStoreInvoicePdf } from "../hooks/useInvoice";
+import { useCreateInvoiceReminder, useInvoiceQuery, useSetInvoicePaidOn, useStoreInvoicePdf } from "../hooks/useInvoice";
 import { invoiceApi } from "../lib/api/invoice";
-import { formatDate } from "../lib/customerOrders";
+import { confirmAction } from "../lib/confirm";
+import { formatDate, todayIso } from "../lib/customerOrders";
+import { formatChf } from "../lib/money/change";
+import { printDocumentToPdf } from "../lib/printPage";
 import { customerLabel, customerName } from "../types/customer";
+import {
+  formatInvoiceNumber,
+  INVOICE_STATUS_LABELS,
+  INVOICE_STATUS_TONES,
+  nextReminderQuestion,
+  REMINDER_LEVEL_LABELS,
+} from "../types/invoice";
 import { formatReceiptNumber } from "../types/sale";
-import { applyPrintPageStyle } from "../lib/printPage";
-import { withPrintTheme } from "../lib/theme";
-
-function nextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-function todayIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
 
 export function InvoicePage() {
+  const navigate = useNavigate();
   const { invoiceId } = useParams({ from: "/invoices/$invoiceId" });
   const id = Number(invoiceId);
   const { data: detail, error } = useInvoiceQuery(id);
   const { data: company } = useCompanyProfileQuery();
   const storePdf = useStoreInvoicePdf();
   const setPaidOn = useSetInvoicePaidOn();
+  const createReminder = useCreateInvoiceReminder();
   const openPdf = useMutation({ mutationFn: () => invoiceApi.openPdf(id) });
   const savePdf = useMutation({
     mutationFn: async () => {
       const path = await save({
         title: "Rechnung speichern",
-        defaultPath: `Rechnung-${id}.pdf`,
+        defaultPath: `Rechnung-${formatInvoiceNumber(id)}.pdf`,
         filters: [{ name: "PDF", extensions: ["pdf"] }],
       });
       if (path) await invoiceApi.savePdf(id, path);
@@ -49,10 +50,8 @@ export function InvoicePage() {
 
   const canStore = detail !== undefined && !detail.invoice.hasPdf && detail.payment !== null && company !== undefined;
 
-  async function storeInvoicePdf() {
-    applyPrintPageStyle("@page { size: A4; margin: 0; }");
-    await nextFrame();
-    await withPrintTheme(() => storePdf.mutateAsync(id)).catch(() => {});
+  function storeInvoicePdf() {
+    return printDocumentToPdf(() => storePdf.mutateAsync(id)).catch(() => {});
   }
 
   // The PDF is created once, right after the invoice: it is what was issued
@@ -66,33 +65,55 @@ export function InvoicePage() {
   if (error) {
     return (
       <section>
-        <PageHeader title={`Rechnung ${invoiceId}`} />
+        <PageHeader title={`Rechnung ${formatInvoiceNumber(id)}`} />
         <p className="field-error">{error.message}</p>
       </section>
     );
   }
   if (!detail || !company) return <p>Wird geladen...</p>;
 
-  const { invoice } = detail;
+  const { invoice, overview, reminders } = detail;
+
+  async function remind() {
+    if (!(await confirmAction(nextReminderQuestion(overview), "Erstellen"))) return;
+    try {
+      const reminder = await createReminder.mutateAsync(id);
+      void navigate({
+        to: "/invoices/$invoiceId/reminders/$reminderId",
+        params: { invoiceId, reminderId: String(reminder.id) },
+      });
+    } catch {
+      // Shown below via createReminder.error.
+    }
+  }
+
   const pdfBusy = storePdf.isPending || (canStore && !storePdf.isError);
 
   return (
     <section>
-      <PageHeader title={`Rechnung ${invoice.id}`} />
+      <PageHeader
+        title={`Rechnung ${formatInvoiceNumber(invoice.id)}`}
+        action={
+          <Button variant="secondary" onClick={() => void navigate({ to: "/invoices" })}>
+            Zur Übersicht
+          </Button>
+        }
+      />
 
       <div className="invoice-controls no-print">
         <div className="invoice-controls-row">
-          {invoice.paidOn ? (
-            <Badge tone="success">Bezahlt am {formatDate(invoice.paidOn)}</Badge>
-          ) : (
-            <Badge tone="warning">Offen · zahlbar bis {formatDate(invoice.dueDate)}</Badge>
-          )}
+          <Badge tone={INVOICE_STATUS_TONES[overview.status]}>
+            {INVOICE_STATUS_LABELS[overview.status]}
+            {invoice.paidOn
+              ? ` am ${formatDate(invoice.paidOn)}`
+              : overview.status !== "refunded" && ` · ${formatChf(overview.outstandingCents)} CHF zahlbar bis ${formatDate(overview.dueDate)}`}
+          </Badge>
           <span className="muted">
             {customerLabel(customerName(detail.customer), detail.customer.company)} ·{" "}
             <Link to="/orders/$orderId" params={{ orderId: String(detail.orderId) }}>
               Auftrag {detail.orderId}
             </Link>{" "}
-            · Beleg-Nr. {formatReceiptNumber(invoice.saleId)}
+            · Beleg-Nr. {formatReceiptNumber(invoice.saleId)} · Referenz {overview.reference}
           </span>
         </div>
 
@@ -127,7 +148,29 @@ export function InvoicePage() {
               Als bezahlt markieren (heute)
             </Button>
           )}
+          {overview.canRemind && (
+            <Button type="button" disabled={createReminder.isPending} onClick={() => void remind()}>
+              {REMINDER_LEVEL_LABELS[overview.reminderLevel + 1]} erstellen
+            </Button>
+          )}
         </div>
+
+        {reminders.length > 0 && (
+          <ul className="invoice-reminder-list">
+            {reminders.map((reminder) => (
+              <li key={reminder.id}>
+                <Link
+                  to="/invoices/$invoiceId/reminders/$reminderId"
+                  params={{ invoiceId, reminderId: String(reminder.id) }}
+                >
+                  {REMINDER_LEVEL_LABELS[reminder.level]}
+                </Link>{" "}
+                vom {formatDate(reminder.createdAt)} · {formatChf(reminder.amountCents)} CHF, zahlbar bis{" "}
+                {formatDate(reminder.dueDate)}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {pdfBusy && <p className="muted">PDF wird erstellt...</p>}
         {storePdf.error && (
@@ -144,7 +187,7 @@ export function InvoicePage() {
             Unten die Ansicht mit den aktuellen Firmendaten. Das PDF ist die Rechnung, wie sie ausgestellt wurde.
           </p>
         )}
-        {[openPdf.error, savePdf.error, setPaidOn.error].map(
+        {[openPdf.error, savePdf.error, setPaidOn.error, createReminder.error].map(
           (err) => err && <p key={err.message} className="field-error">{err.message}</p>,
         )}
       </div>

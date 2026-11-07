@@ -11,7 +11,7 @@ const badgeVariants = cva(
       tone: {
         neutral: "bg-muted text-muted-foreground",
         success: "bg-success/15 text-success",
-        primary: "bg-primary/15 text-primary",
+        primary: "bg-primary/15 text-primary-text",
         warning: "bg-accent text-accent-foreground",
         destructive: "bg-destructive/15 text-destructive",
       },

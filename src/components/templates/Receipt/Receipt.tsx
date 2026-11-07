@@ -85,6 +85,10 @@ export function Receipt({ sale, company, paperSize, onPaperSizeChange, onNewSale
               <>
                 <dt>Auftrag</dt>
                 <dd>{header.customerOrderId}</dd>
+              </>
+            )}
+            {header.customerName && (
+              <>
                 <dt>Kunde</dt>
                 <dd>
                   {header.customerCompany && (

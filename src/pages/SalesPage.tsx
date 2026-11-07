@@ -4,10 +4,20 @@ import { useState } from "react";
 import { DatePicker } from "../components/molecules/DatePicker";
 import { Modal } from "../components/molecules/Modal";
 import { PageHeader } from "../components/molecules/PageHeader";
+import { CustomerForm } from "../components/organisms/CustomerForm";
+import { SaleCustomerPanel } from "../components/organisms/SaleCustomerPanel";
 import { SaleReturnPanel } from "../components/organisms/SaleReturnPanel";
 import { SalesTable } from "../components/organisms/SalesTable";
-import { useCreateSaleReturn, useSaleQuery, useSaleReturnsQuery, useSalesQuery } from "../hooks/useSale";
+import { useCreateCustomer, useCustomersQuery } from "../hooks/useCustomers";
+import {
+  useCreateSaleReturn,
+  useSaleQuery,
+  useSaleReturnsQuery,
+  useSalesQuery,
+  useSetSaleCustomer,
+} from "../hooks/useSale";
 import { customerLabel } from "../types/customer";
+import { formatInvoiceNumber } from "../types/invoice";
 import { formatReceiptNumber } from "../types/sale";
 
 function isoDaysAgo(days: number): string {
@@ -29,10 +39,15 @@ export function SalesPage() {
   const { data: saleDetail } = useSaleQuery(selectedId);
   const { data: returns } = useSaleReturnsQuery(selectedId);
   const createReturn = useCreateSaleReturn();
+  const { data: customers } = useCustomersQuery();
+  const setCustomer = useSetSaleCustomer();
+  const createCustomer = useCreateCustomer();
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
 
   function showDetails(saleId: number | null) {
     setSelectedId(saleId);
     createReturn.reset();
+    setCustomer.reset();
   }
 
   return (
@@ -78,11 +93,23 @@ export function SalesPage() {
                   <>
                     {" · "}
                     <Link to="/invoices/$invoiceId" params={{ invoiceId: String(saleDetail.sale.invoiceId) }}>
-                      Rechnung {saleDetail.sale.invoiceId} ({saleDetail.sale.invoicePaidOn ? "bezahlt" : "offen"})
+                      Rechnung {formatInvoiceNumber(saleDetail.sale.invoiceId)} ({saleDetail.sale.invoicePaidOn ? "bezahlt" : "offen"})
                     </Link>
                   </>
                 )}
               </p>
+            )}
+            {saleDetail.sale.customerOrderId === null && (
+              <SaleCustomerPanel
+                // A new panel when the customer changed, which closes the search.
+                key={`${saleDetail.sale.id}-${saleDetail.sale.customerName}`}
+                sale={saleDetail.sale}
+                customers={(customers ?? []).filter((c) => c.active)}
+                busy={setCustomer.isPending}
+                errorMessage={setCustomer.error?.message}
+                onAssign={(customerId) => setCustomer.mutate({ id: saleDetail.sale.id, customerId })}
+                onCreateNew={() => setCreatingCustomer(true)}
+              />
             )}
             <SaleReturnPanel
               // A new panel per sale, so no input of the previous one is kept.
@@ -95,6 +122,26 @@ export function SalesPage() {
                 createReturn.mutate({ saleId: saleDetail.sale.id, refundMethod, items });
               }}
             />
+            {/* Nested, so it stays usable above the details and Escape closes only this one. */}
+            <Modal open={creatingCustomer} title="Neuer Kunde" onClose={() => setCreatingCustomer(false)} size="lg">
+              {creatingCustomer && (
+                <CustomerForm
+                  customers={customers ?? []}
+                  submitting={createCustomer.isPending}
+                  errorMessage={createCustomer.error?.message}
+                  onCancel={() => setCreatingCustomer(false)}
+                  onSubmit={({ active: _active, ...fields }) => {
+                    createCustomer
+                      .mutateAsync(fields)
+                      .then((customer) => {
+                        setCreatingCustomer(false);
+                        setCustomer.mutate({ id: saleDetail.sale.id, customerId: customer.id });
+                      })
+                      .catch(() => {});
+                  }}
+                />
+              )}
+            </Modal>
           </>
         )}
       </Modal>

@@ -43,9 +43,13 @@ pub struct CustomerOrder {
     pub status: String,
     pub payment_method: PaymentMethod,
     pub discount: Option<SaleDiscountInput>,
-    /// Set once the order is completed.
+    /// Set once the order is billed: paid at the checkout or invoiced.
     pub sale_id: Option<i64>,
     pub invoice_id: Option<i64>,
+    /// Day the invoice was paid; None while it is open.
+    pub invoice_paid_on: Option<String>,
+    /// Delivered and paid (or returned): nothing is left to do.
+    pub done: bool,
     pub created_at: String,
     pub updated_at: String,
     pub items: Vec<CustomerOrderItem>,
@@ -128,6 +132,10 @@ pub struct CustomerOrderRecord {
     pub discount_cumulative: bool,
     pub sale_id: Option<i64>,
     pub invoice_id: Option<i64>,
+    pub invoice_paid_on: Option<String>,
+    /// Total of the sale; None until the order is billed.
+    pub sale_total_cents: Option<i64>,
+    pub refunded_cents: i64,
     pub created_at: String,
     pub updated_at: String,
 }

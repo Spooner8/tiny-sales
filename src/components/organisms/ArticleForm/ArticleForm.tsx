@@ -261,7 +261,7 @@ export function ArticleForm({
               id="article-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={2}
+              rows={4}
             />
           </FormField>
         </div>

@@ -47,9 +47,13 @@ export interface CustomerOrder {
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   discount: SaleDiscount | null;
-  /** Set once the order is completed. */
+  /** Set once the order is billed: paid at the checkout or invoiced. */
   saleId: number | null;
   invoiceId: number | null;
+  /** Day the invoice was paid; null while it is open. */
+  invoicePaidOn: string | null;
+  /** Delivered and paid (or returned): nothing is left to do. */
+  done: boolean;
   createdAt: string;
   updatedAt: string;
   items: CustomerOrderItem[];

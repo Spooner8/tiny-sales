@@ -80,6 +80,7 @@ pub struct Sale {
     pub vat_cents: Option<i64>,
     /// Set for sales that completed a customer order.
     pub customer_order_id: Option<i64>,
+    /// The order's customer, or the one assigned to the sale afterwards.
     pub customer_name: Option<String>,
     pub customer_company: Option<String>,
     /// Set for sales paid by invoice.
@@ -101,7 +102,7 @@ pub struct SaleListEntry {
     pub payment_method: PaymentMethod,
     pub total_cents: i64,
     pub pickup_number: Option<String>,
-    /// For sales of a customer order.
+    /// The order's customer, or the one assigned to the sale afterwards.
     pub customer_name: Option<String>,
     pub customer_company: Option<String>,
     /// For sales paid by invoice (not set on their returns).

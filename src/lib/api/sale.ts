@@ -14,6 +14,8 @@ export const saleApi = {
   create: (input: NewSale) => invokeCommand<SaleWithItems>("create_sale", { input }),
   list: (from: string, to: string) => invokeCommand<SaleListEntry[]>("list_sales", { from, to }),
   get: (id: number) => invokeCommand<SaleWithItems>("get_sale", { id }),
+  setCustomer: (id: number, customerId: number | null) =>
+    invokeCommand<SaleWithItems>("set_sale_customer", { id, customerId }),
   createReturn: (input: NewSaleReturn) => invokeCommand<SaleReturnWithItems>("create_sale_return", { input }),
   listReturns: (saleId: number) => invokeCommand<SaleReturnWithItems[]>("list_sale_returns", { saleId }),
   revenueByDay: (from: string, to: string) =>

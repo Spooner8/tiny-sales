@@ -148,7 +148,7 @@ impl ArticleService {
 /// possibilities, plenty for a small shop). Leaves out characters that are
 /// easily confused when typed by hand (0/O, 1/I) and Y/Z, which a scanner
 /// emulating a US keyboard swaps on a Swiss keyboard layout.
-fn random_code() -> String {
+pub fn random_code() -> String {
     const ALPHABET: &[u8] = b"23456789ABCDEFGHJKLMNPQRSTUVWX";
     const CODE_LENGTH: usize = 6;
     // Largest multiple of the alphabet size up to 256: bytes at or above it
