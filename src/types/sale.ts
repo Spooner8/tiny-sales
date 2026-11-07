@@ -4,7 +4,7 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   Cash: "Bar",
   Twint: "Twint",
-  Card: "Karte (SumUp)",
+  Card: "Karte",
   Invoice: "Rechnung",
   BankTransfer: "Überweisung",
 };
