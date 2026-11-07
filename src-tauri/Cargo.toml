@@ -1,6 +1,6 @@
 [package]
 name = "tiny-sales"
-version = "0.3.0"
+version = "0.3.1"
 description = "Point-of-sale desktop app for small shops"
 authors = ["Swen Löffler"]
 license = "Apache-2.0"
@@ -38,6 +38,8 @@ calamine = "0.38.0"
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
 windows-core = "0.62"
+# The taskbar identity of the app (see lib.rs).
+windows-sys = { version = "0.61", features = ["Win32_UI_Shell"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

@@ -10,8 +10,27 @@ use tauri::Manager;
 
 use state::AppState;
 
+/// Windows shows the icon of the Start menu shortcut in the taskbar when it
+/// can link the window to that shortcut. Its own identity keeps the window
+/// apart from it, so the taskbar shows the window icon in the chosen colour.
+/// It has to differ from the app identifier, which the shortcut may carry.
+#[cfg(windows)]
+fn set_taskbar_identity() {
+    use windows_sys::core::w;
+    use windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+
+    // Safety: a constant, null-terminated string, set before any window exists.
+    // A failure only means that the taskbar shows the blue icon of the shortcut.
+    unsafe {
+        SetCurrentProcessExplicitAppUserModelID(w!("TinySales.Window"));
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(windows)]
+    set_taskbar_identity();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
