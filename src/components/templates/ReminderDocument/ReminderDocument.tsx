@@ -7,7 +7,7 @@ import { formatChf } from "../../../lib/money/change";
 import { documentAssetsLoaded } from "../../../lib/printPage";
 import { customerSalutation } from "../../../lib/saleText";
 import type { CompanyProfile } from "../../../types/companyProfile";
-import { REMINDER_LEVEL_LABELS } from "../../../types/invoice";
+import { formatInvoiceNumber, REMINDER_LEVEL_LABELS } from "../../../types/invoice";
 import type { InvoiceReminderDetail } from "../../../types/invoice";
 
 export interface ReminderDocumentProps {
@@ -19,7 +19,7 @@ export interface ReminderDocumentProps {
 
 function letterText(detail: InvoiceReminderDetail): string {
   const { invoice, reminder, previousReminderAt } = detail;
-  const invoiceRef = `Rechnung Nr. ${invoice.id} vom ${formatDate(invoice.createdAt)}`;
+  const invoiceRef = `Rechnung Nr. ${formatInvoiceNumber(invoice.id)} vom ${formatDate(invoice.createdAt)}`;
   const previous = previousReminderAt ? `vom ${formatDate(previousReminderAt)} ` : "";
   const deadline = formatDate(reminder.dueDate);
   if (reminder.level === 1) {
@@ -74,7 +74,7 @@ export function ReminderDocument({ detail, company, onReady }: ReminderDocumentP
             <dt>Datum</dt>
             <dd>{formatDate(reminder.createdAt)}</dd>
             <dt>Rechnungs-Nr.</dt>
-            <dd>{invoice.id}</dd>
+            <dd>{formatInvoiceNumber(invoice.id)}</dd>
             <dt>Rechnungsdatum</dt>
             <dd>{formatDate(invoice.createdAt)}</dd>
             <dt>Kunden-Nr.</dt>

@@ -35,6 +35,17 @@ export function useSaleQuery(id: number | null) {
   });
 }
 
+export function useSetSaleCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, customerId }: { id: number; customerId: number | null }) => saleApi.setCustomer(id, customerId),
+    onSuccess: (_sale, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["sale", id] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+    },
+  });
+}
+
 export function useSaleReturnsQuery(saleId: number | null) {
   return useQuery({
     queryKey: ["saleReturns", saleId],

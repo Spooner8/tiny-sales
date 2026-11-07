@@ -11,7 +11,7 @@ use super::model::{
     InvoiceAddress, InvoiceDetail, InvoiceOverview, InvoiceOverviewRecord, InvoicePayment, InvoiceReminder,
     InvoiceReminderDetail, InvoiceStatus,
 };
-use super::qr_bill::{self, QrAddress, QrBill, Reference};
+use super::qr_bill::{self, invoice_number, QrAddress, QrBill, Reference};
 use super::repository::InvoiceRepository;
 
 /// Payment reminder, first and second dunning letter.
@@ -33,13 +33,13 @@ impl InvoiceService {
     pub async fn get(pool: &SqlitePool, id: i64) -> Result<InvoiceDetail, AppError> {
         let invoice = InvoiceRepository::find(pool, id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Rechnung {id} nicht gefunden")))?;
+            .ok_or_else(|| AppError::NotFound(format!("Rechnung {} nicht gefunden", invoice_number(id))))?;
         let sale = SaleRepository::find_with_items(pool, invoice.sale_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Verkauf {} nicht gefunden", invoice.sale_id)))?;
         let (order_id, customer_id) = InvoiceRepository::order_of_sale(pool, invoice.sale_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Auftrag zu Rechnung {id} nicht gefunden")))?;
+            .ok_or_else(|| AppError::NotFound(format!("Auftrag zu Rechnung {} nicht gefunden", invoice_number(id))))?;
         let customer = CustomerRepository::find_by_id(pool, customer_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Kunde {customer_id} nicht gefunden")))?;
@@ -48,7 +48,7 @@ impl InvoiceService {
         let overview = Self::find_overview(pool, id).await?;
         let reminders = InvoiceRepository::reminders_of(pool, id).await?;
 
-        let message = format!("Rechnung {id}");
+        let message = format!("Rechnung {}", invoice_number(id));
         let (payment, payment_error) = match Self::payment(&profile, &customer, id, sale.sale.total_cents, message) {
             Ok(payment) => (Some(payment), None),
             Err(err) => (None, Some(err.to_string())),
@@ -58,16 +58,18 @@ impl InvoiceService {
 
     pub async fn list_overview(pool: &SqlitePool) -> Result<Vec<InvoiceOverview>, AppError> {
         let today = InvoiceRepository::today(pool).await?;
+        let iban = qr_bill::normalize_iban(&CompanyProfileRepository::get(pool).await?.iban);
         let rows = InvoiceRepository::list_overview(pool).await?;
-        Ok(rows.into_iter().map(|row| overview(row, &today)).collect())
+        Ok(rows.into_iter().map(|row| overview(row, &today, &iban)).collect())
     }
 
     async fn find_overview(pool: &SqlitePool, id: i64) -> Result<InvoiceOverview, AppError> {
         let today = InvoiceRepository::today(pool).await?;
+        let iban = qr_bill::normalize_iban(&CompanyProfileRepository::get(pool).await?.iban);
         let row = InvoiceRepository::find_overview(pool, id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Rechnung {id} nicht gefunden")))?;
-        Ok(overview(row, &today))
+        Ok(overview(row, &today, &iban))
     }
 
     /// Issues the next reminder of an overdue invoice. The first one is
@@ -76,19 +78,20 @@ impl InvoiceService {
         let invoice = Self::find_overview(pool, invoice_id).await?;
         match invoice.status {
             InvoiceStatus::Paid => {
-                return Err(AppError::Validation(format!("Rechnung {invoice_id} ist bereits bezahlt")));
+                return Err(AppError::Validation(format!("Rechnung {} ist bereits bezahlt", invoice_number(invoice_id))));
             }
             InvoiceStatus::Refunded => {
-                return Err(AppError::Validation(format!("Rechnung {invoice_id} wurde vollständig retourniert")));
+                return Err(AppError::Validation(format!("Rechnung {} wurde vollständig retourniert", invoice_number(invoice_id))));
             }
             InvoiceStatus::Open => {
-                return Err(AppError::Validation(format!("Rechnung {invoice_id} ist noch nicht überfällig")));
+                return Err(AppError::Validation(format!("Rechnung {} ist noch nicht überfällig", invoice_number(invoice_id))));
             }
             InvoiceStatus::Overdue => {}
         }
         if invoice.reminder_level >= MAX_REMINDER_LEVEL {
             return Err(AppError::Validation(format!(
-                "Für Rechnung {invoice_id} wurden bereits alle Mahnstufen erstellt"
+                "Für Rechnung {} wurden bereits alle Mahnstufen erstellt",
+                invoice_number(invoice_id)
             )));
         }
 
@@ -117,10 +120,10 @@ impl InvoiceService {
         let invoice_id = reminder.invoice_id;
         let invoice = InvoiceRepository::find(pool, invoice_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Rechnung {invoice_id} nicht gefunden")))?;
+            .ok_or_else(|| AppError::NotFound(format!("Rechnung {} nicht gefunden", invoice_number(invoice_id))))?;
         let (_, customer_id) = InvoiceRepository::order_of_sale(pool, invoice.sale_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Auftrag zu Rechnung {invoice_id} nicht gefunden")))?;
+            .ok_or_else(|| AppError::NotFound(format!("Auftrag zu Rechnung {} nicht gefunden", invoice_number(invoice_id))))?;
         let customer = CustomerRepository::find_by_id(pool, customer_id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Kunde {customer_id} nicht gefunden")))?;
@@ -135,7 +138,7 @@ impl InvoiceService {
         let refunded_cents = total_cents + fees_cents - reminder.amount_cents;
 
         let profile = CompanyProfileRepository::get(pool).await?;
-        let message = format!("Rechnung {invoice_id}, {}", reminder_label(reminder.level));
+        let message = format!("Rechnung {}, {}", invoice_number(invoice_id), reminder_label(reminder.level));
         let (payment, payment_error) =
             match Self::payment(&profile, &customer, invoice_id, reminder.amount_cents, message) {
                 Ok(payment) => (Some(payment), None),
@@ -170,7 +173,7 @@ impl InvoiceService {
         let pdf = InvoiceRepository::reminder_pdf(pool, id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Für Mahnung {id} ist noch kein PDF gespeichert")))?;
-        Ok((pdf, format!("Mahnung-{}-{}.pdf", reminder.invoice_id, reminder.level)))
+        Ok((pdf, format!("Mahnung-{}-{}.pdf", invoice_number(reminder.invoice_id), reminder.level)))
     }
 
     pub async fn store_reminder_pdf(pool: &SqlitePool, id: i64, pdf: &[u8]) -> Result<(), AppError> {
@@ -183,7 +186,7 @@ impl InvoiceService {
     pub async fn pdf(pool: &SqlitePool, id: i64) -> Result<Vec<u8>, AppError> {
         InvoiceRepository::pdf(pool, id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Für Rechnung {id} ist noch kein PDF gespeichert")))
+            .ok_or_else(|| AppError::NotFound(format!("Für Rechnung {} ist noch kein PDF gespeichert", invoice_number(id))))
     }
 
     pub async fn has_pdf(pool: &SqlitePool, id: i64) -> Result<bool, AppError> {
@@ -316,11 +319,13 @@ fn invoice_status(row: &InvoiceOverviewRecord, due_date: &str, today: &str) -> I
     }
 }
 
-fn overview(row: InvoiceOverviewRecord, today: &str) -> InvoiceOverview {
+fn overview(row: InvoiceOverviewRecord, today: &str, iban: &str) -> InvoiceOverview {
     let due_date = row.reminder_due_date.clone().unwrap_or_else(|| row.due_date.clone());
     let status = invoice_status(&row, &due_date, today);
     InvoiceOverview {
         id: row.id,
+        reference: Reference::for_number(iban, row.id).formatted(),
+        reference_search: qr_bill::reference_search_terms(iban, row.id),
         sale_id: row.sale_id,
         order_id: row.order_id,
         customer_name: row.customer_name,
@@ -408,7 +413,12 @@ mod tests {
     #[test]
     fn only_overdue_invoices_are_reminded_level_by_level() {
         with_invoice(async |pool, id| {
-            assert_eq!(InvoiceService::find_overview(pool, id).await.unwrap().status, InvoiceStatus::Open);
+            let invoice = InvoiceService::find_overview(pool, id).await.unwrap();
+            assert_eq!(invoice.status, InvoiceStatus::Open);
+            // The list shows what the payment part shows.
+            let payment = InvoiceService::get(pool, id).await.unwrap().payment.unwrap();
+            assert_eq!(invoice.reference, payment.reference);
+            assert!(invoice.reference_search.contains(&payment.reference.replace(' ', "")));
             assert!(InvoiceService::create_reminder(pool, id).await.is_err());
 
             let_deadline_pass(pool, id).await;

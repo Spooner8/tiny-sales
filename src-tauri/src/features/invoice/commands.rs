@@ -6,6 +6,7 @@ use crate::pdf;
 use crate::state::AppState;
 
 use super::model::{InvoiceDetail, InvoiceOverview, InvoiceReminder, InvoiceReminderDetail};
+use super::qr_bill;
 use super::service::InvoiceService;
 
 #[tauri::command]
@@ -37,7 +38,7 @@ pub async fn store_invoice_pdf(window: WebviewWindow, state: State<'_, AppState>
 #[tauri::command]
 pub async fn open_invoice_pdf(app: AppHandle, state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
     let pdf = InvoiceService::pdf(&*state.pool().await?, id).await?;
-    open_pdf(&app, &pdf, &format!("Rechnung-{id}.pdf"))
+    open_pdf(&app, &pdf, &format!("Rechnung-{}.pdf", qr_bill::invoice_number(id)))
 }
 
 fn open_pdf(app: &AppHandle, pdf: &[u8], file_name: &str) -> Result<(), AppError> {

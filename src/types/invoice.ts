@@ -14,6 +14,11 @@ export interface Invoice {
   hasPdf: boolean;
 }
 
+/** Invoice numbers have five digits: invoice 1 is "00001". */
+export function formatInvoiceNumber(id: number): string {
+  return String(id).padStart(5, "0");
+}
+
 /** Overdue counts from the latest deadline: that of the last reminder, if any. */
 export type InvoiceStatus = "open" | "overdue" | "paid" | "refunded";
 
@@ -40,6 +45,10 @@ export const REMINDER_LEVEL_LABELS: Record<number, string> = {
 /** One row of the invoice overview. */
 export interface InvoiceOverview {
   id: number;
+  /** The payment reference, formatted as printed. */
+  reference: string;
+  /** Every reference a payment can carry, without spaces, for searching. */
+  referenceSearch: string;
   saleId: number;
   orderId: number;
   customerName: string;
@@ -84,7 +93,7 @@ export interface InvoiceReminder {
 /** The question before issuing the next reminder of an invoice. */
 export function nextReminderQuestion(invoice: InvoiceOverview): string {
   const label = REMINDER_LEVEL_LABELS[invoice.reminderLevel + 1];
-  return `${label} für Rechnung ${invoice.id} erstellen?\n\nSie erhält eine neue Zahlungsfrist und kann danach nicht mehr geändert werden.`;
+  return `${label} für Rechnung ${formatInvoiceNumber(invoice.id)} erstellen?\n\nSie erhält eine neue Zahlungsfrist und kann danach nicht mehr geändert werden.`;
 }
 
 /** An address as printed on the payment part. */

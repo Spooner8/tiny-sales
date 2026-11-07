@@ -15,7 +15,13 @@ import { formatDate, todayIso } from "../lib/customerOrders";
 import { formatChf } from "../lib/money/change";
 import { printDocumentToPdf } from "../lib/printPage";
 import { customerLabel, customerName } from "../types/customer";
-import { INVOICE_STATUS_LABELS, INVOICE_STATUS_TONES, nextReminderQuestion, REMINDER_LEVEL_LABELS } from "../types/invoice";
+import {
+  formatInvoiceNumber,
+  INVOICE_STATUS_LABELS,
+  INVOICE_STATUS_TONES,
+  nextReminderQuestion,
+  REMINDER_LEVEL_LABELS,
+} from "../types/invoice";
 import { formatReceiptNumber } from "../types/sale";
 
 export function InvoicePage() {
@@ -32,7 +38,7 @@ export function InvoicePage() {
     mutationFn: async () => {
       const path = await save({
         title: "Rechnung speichern",
-        defaultPath: `Rechnung-${id}.pdf`,
+        defaultPath: `Rechnung-${formatInvoiceNumber(id)}.pdf`,
         filters: [{ name: "PDF", extensions: ["pdf"] }],
       });
       if (path) await invoiceApi.savePdf(id, path);
@@ -59,7 +65,7 @@ export function InvoicePage() {
   if (error) {
     return (
       <section>
-        <PageHeader title={`Rechnung ${invoiceId}`} />
+        <PageHeader title={`Rechnung ${formatInvoiceNumber(id)}`} />
         <p className="field-error">{error.message}</p>
       </section>
     );
@@ -86,7 +92,7 @@ export function InvoicePage() {
   return (
     <section>
       <PageHeader
-        title={`Rechnung ${invoice.id}`}
+        title={`Rechnung ${formatInvoiceNumber(invoice.id)}`}
         action={
           <Button variant="secondary" onClick={() => void navigate({ to: "/invoices" })}>
             Zur Übersicht
@@ -107,7 +113,7 @@ export function InvoicePage() {
             <Link to="/orders/$orderId" params={{ orderId: String(detail.orderId) }}>
               Auftrag {detail.orderId}
             </Link>{" "}
-            · Beleg-Nr. {formatReceiptNumber(invoice.saleId)}
+            · Beleg-Nr. {formatReceiptNumber(invoice.saleId)} · Referenz {overview.reference}
           </span>
         </div>
 

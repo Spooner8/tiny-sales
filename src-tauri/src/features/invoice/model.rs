@@ -54,6 +54,10 @@ pub struct InvoiceOverviewRecord {
 #[serde(rename_all = "camelCase")]
 pub struct InvoiceOverview {
     pub id: i64,
+    /// The payment reference, formatted as printed.
+    pub reference: String,
+    /// Every reference a payment can carry, without spaces, for searching.
+    pub reference_search: String,
     pub sale_id: i64,
     pub order_id: i64,
     pub customer_name: String,

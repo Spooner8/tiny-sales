@@ -14,6 +14,7 @@ import {
 import { DatePicker } from "../components/molecules/DatePicker";
 import { FormField } from "../components/molecules/FormField";
 import { PageHeader } from "../components/molecules/PageHeader";
+import { formatDate } from "../lib/customerOrders";
 import { formatChf } from "../lib/money/change";
 import { useRevenueByArticle, useRevenueByDay, useRevenueByProductGroup } from "../hooks/useStatistics";
 import { useTheme } from "../hooks/useTheme";
@@ -94,7 +95,13 @@ export function StatisticsPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} vertical={false} />
-                <XAxis dataKey="day" tick={tickStyle} axisLine={{ stroke: palette.grid }} tickLine={false} />
+                <XAxis
+                  dataKey="day"
+                  tickFormatter={(day: string) => formatDate(day)}
+                  tick={tickStyle}
+                  axisLine={{ stroke: palette.grid }}
+                  tickLine={false}
+                />
                 <YAxis
                   tickFormatter={(v: number) => formatChf(v * 100)}
                   width={70}
@@ -103,6 +110,7 @@ export function StatisticsPage() {
                   tickLine={false}
                 />
                 <Tooltip
+                  labelFormatter={(day) => formatDate(String(day))}
                   formatter={(v: number) => `${formatChf(v * 100)} CHF`}
                   {...tooltipStyles}
                 />

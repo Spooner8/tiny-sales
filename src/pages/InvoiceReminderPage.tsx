@@ -10,7 +10,7 @@ import { useCompanyProfileQuery } from "../hooks/useCompanyProfile";
 import { useInvoiceReminderQuery, useStoreInvoiceReminderPdf } from "../hooks/useInvoice";
 import { invoiceApi } from "../lib/api/invoice";
 import { printDocumentToPdf } from "../lib/printPage";
-import { REMINDER_LEVEL_LABELS } from "../types/invoice";
+import { formatInvoiceNumber, REMINDER_LEVEL_LABELS } from "../types/invoice";
 
 export function InvoiceReminderPage() {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ export function InvoiceReminderPage() {
       if (!detail) return;
       const path = await save({
         title: "Mahnung speichern",
-        defaultPath: `Mahnung-${detail.invoice.id}-${detail.reminder.level}.pdf`,
+        defaultPath: `Mahnung-${formatInvoiceNumber(detail.invoice.id)}-${detail.reminder.level}.pdf`,
         filters: [{ name: "PDF", extensions: ["pdf"] }],
       });
       if (path) await invoiceApi.saveReminderPdf(id, path);
@@ -73,7 +73,7 @@ export function InvoiceReminderPage() {
   return (
     <section>
       <PageHeader
-        title={`${REMINDER_LEVEL_LABELS[reminder.level]} zu Rechnung ${detail.invoice.id}`}
+        title={`${REMINDER_LEVEL_LABELS[reminder.level]} zu Rechnung ${formatInvoiceNumber(detail.invoice.id)}`}
         action={backToInvoice}
       />
 

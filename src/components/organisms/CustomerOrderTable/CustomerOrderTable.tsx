@@ -10,6 +10,7 @@ import { formatChf } from "../../../lib/money/change";
 import { customerLabel } from "../../../types/customer";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "../../../types/customerOrder";
 import type { CustomerOrder, OrderStatus } from "../../../types/customerOrder";
+import { formatInvoiceNumber } from "../../../types/invoice";
 import { formatReceiptNumber, PAYMENT_METHOD_LABELS } from "../../../types/sale";
 
 export interface CustomerOrderTableProps {
@@ -26,7 +27,7 @@ const columnHelper = createColumnHelper<CustomerOrder>();
 function billingLabel(order: CustomerOrder): string {
   if (order.saleId === null) return "Nicht abgerechnet";
   if (order.invoiceId === null) return `Beleg ${formatReceiptNumber(order.saleId)} · bezahlt`;
-  return `Rechnung ${order.invoiceId} · ${order.invoicePaidOn ? "bezahlt" : "offen"}`;
+  return `Rechnung ${formatInvoiceNumber(order.invoiceId)} · ${order.invoicePaidOn ? "bezahlt" : "offen"}`;
 }
 
 function billingTone(order: CustomerOrder): "warning" | "success" {

@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 use crate::error::AppError;
 use crate::features::article::repository::ArticleRepository;
 use crate::features::company_profile::repository::CompanyProfileRepository;
+use crate::features::customer::repository::CustomerRepository;
 use crate::money;
 
 use super::model::{
@@ -215,6 +216,22 @@ impl SaleService {
             .ok_or_else(|| AppError::NotFound(format!("Verkauf {id} nicht gefunden")))
     }
 
+    /// Assigns a customer to a sale afterwards, or removes them (None). The
+    /// sale of a customer order keeps the order's customer.
+    pub async fn set_customer(pool: &SqlitePool, id: i64, customer_id: Option<i64>) -> Result<SaleWithItems, AppError> {
+        let sale = Self::get(pool, id).await?;
+        if sale.sale.customer_order_id.is_some() {
+            return Err(AppError::Validation("Dieser Verkauf hat den Kunden seines Auftrags".into()));
+        }
+        if let Some(customer_id) = customer_id {
+            if CustomerRepository::find_by_id(pool, customer_id).await?.is_none() {
+                return Err(AppError::Validation("Kunde existiert nicht".into()));
+            }
+        }
+        SaleRepository::set_customer(pool, id, customer_id).await?;
+        Self::get(pool, id).await
+    }
+
     pub async fn revenue_by_day(pool: &SqlitePool, from: &str, to: &str) -> Result<Vec<DailyRevenue>, AppError> {
         SaleRepository::revenue_by_day(pool, from, to).await
     }
@@ -313,6 +330,41 @@ mod tests {
         let d = SaleService::sale_discount(Some(SaleDiscountInput::Total { value: 3000 }), &items, 3375).unwrap();
         assert_eq!(d.cents, 375);
         assert!(SaleService::sale_discount(Some(SaleDiscountInput::Total { value: 4000 }), &items, 3375).is_err());
+    }
+
+    #[test]
+    fn customer_can_be_assigned_to_a_sale_without_order() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let dir = std::env::temp_dir().join(format!("tiny-sales-test-{}", uuid::Uuid::new_v4()));
+            let pool = crate::db::connect_and_migrate(&dir.join("tiny-sales.db")).await.unwrap();
+            sqlx::raw_sql(
+                "INSERT INTO customer (id, first_name, last_name, company) VALUES (1, 'Anna', 'Muster', 'Muster AG');
+                 INSERT INTO sale (id, timestamp, payment_method, status, total_cents)
+                     VALUES (1, '2026-03-01 10:00:00', 'Cash', 'Completed', 5000),
+                            (2, '2026-03-01 11:00:00', 'Cash', 'Completed', 5000);
+                 INSERT INTO sale_return (sale_id, timestamp, refund_method, total_refund_cents)
+                     VALUES (1, '2026-03-02 09:00:00', 'Cash', 2000);
+                 INSERT INTO customer_order (customer_id, payment_method, sale_id) VALUES (1, 'Cash', 2);",
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            let assigned = SaleService::set_customer(&pool, 1, Some(1)).await.unwrap();
+            assert_eq!(assigned.sale.customer_name.as_deref(), Some("Anna Muster"));
+            assert_eq!(assigned.sale.customer_company.as_deref(), Some("Muster AG"));
+            // The return in the list shows the customer of its sale too.
+            let entries = SaleService::list(&pool, "2026-03-01", "2026-03-02").await.unwrap();
+            assert!(entries.iter().all(|e| e.customer_name.as_deref() == Some("Anna Muster")));
+
+            assert!(SaleService::set_customer(&pool, 1, Some(99)).await.is_err());
+            assert!(SaleService::set_customer(&pool, 1, None).await.unwrap().sale.customer_name.is_none());
+            // The sale of an order keeps the order's customer.
+            assert!(SaleService::set_customer(&pool, 2, None).await.is_err());
+
+            pool.close().await;
+            let _ = std::fs::remove_dir_all(&dir);
+        });
     }
 
     #[test]

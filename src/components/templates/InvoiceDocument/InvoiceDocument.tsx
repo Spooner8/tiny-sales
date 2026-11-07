@@ -10,6 +10,7 @@ import { formatChf } from "../../../lib/money/change";
 import { documentAssetsLoaded } from "../../../lib/printPage";
 import { customerSalutation, lineDiscountNote, saleDiscountLabel, vatLabel } from "../../../lib/saleText";
 import type { CompanyProfile } from "../../../types/companyProfile";
+import { formatInvoiceNumber } from "../../../types/invoice";
 import type { InvoiceDetail } from "../../../types/invoice";
 
 export interface InvoiceDocumentProps {
@@ -83,7 +84,7 @@ export function InvoiceDocument({ detail, company, onReady }: InvoiceDocumentPro
       <h1 className="invoice-title">Rechnung</h1>
       <dl className="invoice-meta">
         <dt>Rechnungs-Nr.</dt>
-        <dd>{invoice.id}</dd>
+        <dd>{formatInvoiceNumber(invoice.id)}</dd>
         <dt>Rechnungsdatum</dt>
         <dd>{formatDate(invoice.createdAt)}</dd>
         <dt>Auftrag</dt>
@@ -111,7 +112,7 @@ export function InvoiceDocument({ detail, company, onReady }: InvoiceDocumentPro
   const continuationHeader = (pageNumber: number) => (
     <div className="invoice-continuation">
       <span>
-        {company.name} · Rechnung {invoice.id}
+        {company.name} · Rechnung {formatInvoiceNumber(invoice.id)}
       </span>
       <span>
         Seite {pageNumber} von {pageCount}

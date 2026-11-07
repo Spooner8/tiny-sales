@@ -25,6 +25,16 @@ pub async fn get_sale(state: State<'_, AppState>, id: i64) -> Result<SaleWithIte
 }
 
 #[tauri::command]
+pub async fn set_sale_customer(
+    state: State<'_, AppState>,
+    id: i64,
+    customer_id: Option<i64>,
+) -> Result<SaleWithItems, AppError> {
+    let pool = state.pool().await?;
+    SaleService::set_customer(&pool, id, customer_id).await
+}
+
+#[tauri::command]
 pub async fn get_revenue_by_day(
     state: State<'_, AppState>,
     from: String,

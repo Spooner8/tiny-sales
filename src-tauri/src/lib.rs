@@ -75,6 +75,7 @@ pub fn run() {
             features::sale::commands::create_sale,
             features::sale::commands::list_sales,
             features::sale::commands::get_sale,
+            features::sale::commands::set_sale_customer,
             features::sale::commands::get_revenue_by_day,
             features::sale::commands::get_revenue_by_product_group,
             features::sale::commands::get_revenue_by_article,

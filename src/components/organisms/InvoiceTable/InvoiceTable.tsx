@@ -1,4 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
+import type { FilterFn } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 
 import { Badge } from "../../atoms/Badge";
@@ -9,7 +10,12 @@ import { formatChf } from "../../../lib/money/change";
 import { customerLabel } from "../../../types/customer";
 import { ORDER_STATUS_LABELS } from "../../../types/customerOrder";
 import type { OrderStatus } from "../../../types/customerOrder";
-import { INVOICE_STATUS_LABELS, INVOICE_STATUS_TONES, REMINDER_LEVEL_LABELS } from "../../../types/invoice";
+import {
+  formatInvoiceNumber,
+  INVOICE_STATUS_LABELS,
+  INVOICE_STATUS_TONES,
+  REMINDER_LEVEL_LABELS,
+} from "../../../types/invoice";
 import type { InvoiceOverview } from "../../../types/invoice";
 
 export interface InvoiceTableProps {
@@ -25,12 +31,28 @@ export interface InvoiceTableProps {
 
 const columnHelper = createColumnHelper<InvoiceOverview>();
 
+/**
+ * Finds the text in the columns, and the reference however a bank statement
+ * writes it: with or without spaces, in any case, also an older short form.
+ */
+const searchInvoices: FilterFn<InvoiceOverview> = (row, columnId, query: string) => {
+  const needle = query.trim().toLowerCase();
+  return (
+    String(row.getValue(columnId)).toLowerCase().includes(needle) ||
+    row.original.referenceSearch.toLowerCase().includes(needle.replace(/\s/g, ""))
+  );
+};
+
 export function InvoiceTable({ invoices, onOpen, onRemind, onMarkPaid, busy, toolbar }: InvoiceTableProps) {
   const columns = [
-    columnHelper.accessor((i) => String(i.id), {
+    columnHelper.accessor((i) => formatInvoiceNumber(i.id), {
       id: "number",
       header: "Nr.",
       meta: { searchable: true },
+    }),
+    columnHelper.accessor("reference", {
+      header: "Referenz",
+      meta: { searchable: true, className: "invoice-table-reference" },
     }),
     columnHelper.accessor((i) => formatDate(i.createdAt), {
       id: "createdAt",
@@ -100,8 +122,9 @@ export function InvoiceTable({ invoices, onOpen, onRemind, onMarkPaid, busy, too
     <FilterableTable
       data={invoices}
       columns={columns}
-      searchPlaceholder="Rechnungen suchen (Nr., Kunde, Betrag...)"
+      searchPlaceholder="Rechnungen suchen (Nr., Referenz aus dem E-Banking, Kunde, Betrag...)"
       toolbar={toolbar}
+      searchFn={searchInvoices}
     />
   );
 }
