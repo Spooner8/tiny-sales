@@ -19,7 +19,8 @@ import type { LinkProps } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
 
-import appMark from "../../../assets/app-mark.svg";
+import { useTheme } from "../../../hooks/useTheme";
+import { appMarkUrl } from "../../../lib/appMark";
 import { NavLink } from "../../atoms/NavLink";
 import { useCompanyProfileQuery } from "../../../hooks/useCompanyProfile";
 import { useInvoicesQuery } from "../../../hooks/useInvoice";
@@ -58,6 +59,7 @@ export function AppNav() {
   // working on another page.
   const { data: openSales } = useOpenSalesQuery();
   const { data: company } = useCompanyProfileQuery();
+  const { colorScheme } = useTheme();
   const openSaleCount = (openSales ?? []).filter((sale) => sale.items.length > 0).length;
   // Overdue invoices, so reminders aren't forgotten.
   const { data: invoices } = useInvoicesQuery();
@@ -75,7 +77,7 @@ export function AppNav() {
           <img src={collapsed ? company.logoMark || company.logo : company.logo} alt={company.name} />
         ) : (
           // No logo entered yet (Einstellungen → Firma): the app's own mark.
-          <img className="app-nav-brand-mark" src={appMark} alt="Tiny Sales" />
+          <img className="app-nav-brand-mark" src={appMarkUrl(colorScheme)} alt="Tiny Sales" />
         )}
       </div>
       <button
